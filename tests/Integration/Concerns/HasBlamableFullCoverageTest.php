@@ -115,28 +115,40 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
 
     public function testCreatingEventDoesNotOverwriteExistingCreatedBy(): void
     {
+        // Create another user to use as existing created_by
+        $existingUser = new TestUser();
+        $existingUser->name = 'Existing User';
+        $existingUser->email = 'existing@example.com';
+        $existingUser->save();
+
         Auth::login($this->user);
 
         $model = new TestModel();
         $model->name = 'Test';
-        $model->created_by = 999;
+        $model->created_by = $existingUser->id;
         $model->save();
 
-        $this->assertSame(999, $model->created_by);
+        $this->assertSame($existingUser->id, $model->created_by);
         $this->assertSame($this->user->id, $model->updated_by);
     }
 
     public function testCreatingEventDoesNotOverwriteExistingUpdatedBy(): void
     {
+        // Create another user to use as existing updated_by
+        $existingUser = new TestUser();
+        $existingUser->name = 'Existing User';
+        $existingUser->email = 'existingupdated@example.com';
+        $existingUser->save();
+
         Auth::login($this->user);
 
         $model = new TestModel();
         $model->name = 'Test';
-        $model->updated_by = 888;
+        $model->updated_by = $existingUser->id;
         $model->save();
 
         $this->assertSame($this->user->id, $model->created_by);
-        $this->assertSame(888, $model->updated_by);
+        $this->assertSame($existingUser->id, $model->updated_by);
     }
 
     public function testUpdatingEventDoesNotSetColumnsWhenNoUser(): void
@@ -213,9 +225,15 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
 
     public function testRestoringEventDoesNothingWhenNoUser(): void
     {
+        // Create a user to use as existing deleted_by
+        $existingUser = new TestUser();
+        $existingUser->name = 'Existing User';
+        $existingUser->email = 'existingdeleted@example.com';
+        $existingUser->save();
+
         $model = new TestModel();
         $model->name = 'Test';
-        $model->deleted_by = 123;
+        $model->deleted_by = $existingUser->id;
         $model->save();
         $model->delete();
 
@@ -224,7 +242,7 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $model->restore();
 
         // deleted_by should remain as-is when no user is authenticated
-        $this->assertSame(123, $model->deleted_by);
+        $this->assertSame($existingUser->id, $model->deleted_by);
     }
 
     public function testUsesSoftDeletesMethodChecksForIsForceDeleting(): void

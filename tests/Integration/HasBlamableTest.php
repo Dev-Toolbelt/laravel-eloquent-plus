@@ -123,14 +123,20 @@ final class HasBlamableTest extends IntegrationTestCase
 
     public function testExistingCreatedByIsNotOverwritten(): void
     {
+        // Create another user to use as existing created_by
+        $existingUser = new TestUser();
+        $existingUser->name = 'Existing User';
+        $existingUser->email = 'existing@example.com';
+        $existingUser->save();
+
         Auth::login($this->user);
 
         $model = new TestModel();
         $model->name = 'Test';
-        $model->created_by = 999;
+        $model->created_by = $existingUser->id;
         $model->save();
 
-        $this->assertSame(999, $model->created_by);
+        $this->assertSame($existingUser->id, $model->created_by);
     }
 
     public function testBlamableWorksWithDifferentUsers(): void

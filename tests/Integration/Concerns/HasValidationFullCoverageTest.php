@@ -283,17 +283,21 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $user->email = 'nooverwrite@example.com';
         $user->save();
 
-        Auth::login($user);
+        // Create another user to use as existing created_by
+        $existingUser = new TestUser();
+        $existingUser->name = 'Existing User';
+        $existingUser->email = 'existingcreator@example.com';
+        $existingUser->save();
 
-        $customUserId = 999;
+        Auth::login($user);
 
         $model = new TestModel();
         $model->name = 'Test';
-        $model->created_by = $customUserId;
+        $model->created_by = $existingUser->id;
         $model->save();
 
-        // The custom user ID should be preserved
-        $this->assertSame($customUserId, $model->created_by);
+        // The existing user ID should be preserved
+        $this->assertSame($existingUser->id, $model->created_by);
     }
 
     public function testCreatedByIsNullableWhenUserNotAuthenticated(): void
@@ -348,17 +352,21 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $user->email = 'nooverwriteupdatedby@example.com';
         $user->save();
 
-        Auth::login($user);
+        // Create another user to use as existing updated_by
+        $existingUser = new TestUser();
+        $existingUser->name = 'Existing User';
+        $existingUser->email = 'existingupdater@example.com';
+        $existingUser->save();
 
-        $customUserId = 888;
+        Auth::login($user);
 
         $model = new TestModel();
         $model->name = 'Test';
-        $model->updated_by = $customUserId;
+        $model->updated_by = $existingUser->id;
         $model->save();
 
-        // The custom user ID should be preserved
-        $this->assertSame($customUserId, $model->updated_by);
+        // The existing user ID should be preserved
+        $this->assertSame($existingUser->id, $model->updated_by);
     }
 
     public function testBeforeValidateUpdatedByOnUpdateWhenNull(): void
