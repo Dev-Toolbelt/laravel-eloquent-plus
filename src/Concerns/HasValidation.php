@@ -6,6 +6,9 @@ namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
 use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use ReflectionClass;
+use ReflectionException;
 
 /**
  * Trait for automatic model validation based on defined rules.
@@ -186,14 +189,31 @@ trait HasValidation
      */
     protected function getUsersTable(): string
     {
-        /** @var class-string|null $userModel */
-        $userModel = config('auth.providers.users.model');
+        static $tableName = null;
 
-        if ($userModel !== null && class_exists($userModel)) {
-            return (new $userModel())->getTable();
+        if ($tableName !== null) {
+            return $tableName;
         }
 
-        return 'users';
+        $userModel = config('auth.providers.users.model');
+
+        if ($userModel === null || !class_exists($userModel)) {
+            return $tableName = 'users';
+        }
+
+        try {
+            $reflection = new ReflectionClass($userModel);
+            $property = $reflection->getProperty('table');
+
+            if ($property->hasDefaultValue()) {
+                return $tableName = $property->getDefaultValue();
+            }
+        } catch (ReflectionException) {
+        }
+
+        $className = class_basename($userModel);
+
+        return $tableName = Str::snake(Str::pluralStudly($className));
     }
 
     /**
