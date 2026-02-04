@@ -18,6 +18,8 @@ class FullAttributesModel extends ModelBase
         'email',
     ];
 
+    protected bool $usesBlamable = true;
+
     protected array $rules = [];
 
     public function __construct(array $attributes = [])

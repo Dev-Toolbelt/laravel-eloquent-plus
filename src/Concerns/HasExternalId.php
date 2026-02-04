@@ -51,8 +51,12 @@ trait HasExternalId
                 return;
             }
 
-            if (!$model->getAttribute($model->getExternalIdColumn())) {
+            if (!$model->hasAttribute($model->getExternalIdColumn())) {
                 throw new MissingModelPropertyException($model::class, $model->getExternalIdColumn());
+            }
+
+            if ($model->getAttribute($model->getExternalIdColumn())) {
+                return;
             }
 
             $model->setAttribute($model->getExternalIdColumn(), Str::uuid7()->toString());

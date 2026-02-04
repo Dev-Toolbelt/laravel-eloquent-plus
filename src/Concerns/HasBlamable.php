@@ -61,21 +61,26 @@ trait HasBlamable
                 return;
             }
 
+            if (!$model->hasAttribute($model->getCreatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getCreatedByColumn());
+            }
+
+            if (!$model->hasAttribute($model->getUpdatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
+            }
+
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
             if (!$model->getAttribute($model->getCreatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getCreatedByColumn());
+                $model->setAttribute($model->getCreatedByColumn(), $userId);
             }
 
             if (!$model->getAttribute($model->getUpdatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
+                $model->setAttribute($model->getUpdatedByColumn(), $userId);
             }
-
-            $model->setAttribute($model->getCreatedByColumn(), $userId);
-            $model->setAttribute($model->getUpdatedByColumn(), $userId);
         });
 
         static::updating(static function (ModelBase $model): void {
@@ -83,13 +88,13 @@ trait HasBlamable
                 return;
             }
 
+            if (!$model->hasAttribute($model->getUpdatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
+            }
+
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
-            }
-
-            if (!$model->getAttribute($model->getUpdatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
             }
 
             $model->setAttribute($model->getUpdatedByColumn(), $userId);
@@ -106,11 +111,11 @@ trait HasBlamable
             }
 
             if ($model->usesSoftDeletes() && !$model->isForceDeleting()) {
-                if (!$model->getAttribute($model->getDeletedByColumn())) {
+                if (!$model->hasAttribute($model->getDeletedByColumn())) {
                     throw new MissingModelPropertyException($model::class, $model->getDeletedByColumn());
                 }
 
-                if (!$model->getAttribute($model->getUpdatedByColumn())) {
+                if (!$model->hasAttribute($model->getUpdatedByColumn())) {
                     throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
                 }
 
@@ -124,17 +129,17 @@ trait HasBlamable
                 return;
             }
 
-            $userId = $model->getBlamableUserId();
-            if ($userId === null) {
-                return;
-            }
-
-            if (!$model->getAttribute($model->getDeletedByColumn())) {
+            if (!$model->hasAttribute($model->getDeletedByColumn())) {
                 throw new MissingModelPropertyException($model::class, $model->getDeletedByColumn());
             }
 
-            if (!$model->getAttribute($model->getUpdatedByColumn())) {
+            if (!$model->hasAttribute($model->getUpdatedByColumn())) {
                 throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
+            }
+
+            $userId = $model->getBlamableUserId();
+            if ($userId === null) {
+                return;
             }
 
             $model->setAttribute($model->getDeletedByColumn(), null);

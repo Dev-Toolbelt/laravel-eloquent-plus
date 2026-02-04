@@ -55,9 +55,9 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $rules = $model->getRules();
 
         // With external ID enabled, blamable rules should use UUID validation
-        // created_by is required (auto-populated in beforeValidate)
+        // All blamable fields are nullable to allow saving without authenticated user
         $this->assertArrayHasKey('created_by', $rules);
-        $this->assertContains('required', $rules['created_by']);
+        $this->assertContains('nullable', $rules['created_by']);
         $this->assertContains('uuid', $rules['created_by']);
 
         $this->assertArrayHasKey('updated_by', $rules);
@@ -73,9 +73,9 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $rules = $model->getRules();
 
         // Without external ID, blamable rules should use integer validation
-        // created_by is required (auto-populated in beforeValidate)
+        // All blamable fields are nullable to allow saving without authenticated user
         $this->assertArrayHasKey('created_by', $rules);
-        $this->assertContains('required', $rules['created_by']);
+        $this->assertContains('nullable', $rules['created_by']);
         $this->assertContains('integer', $rules['created_by']);
 
         $this->assertArrayHasKey('updated_by', $rules);
@@ -296,25 +296,20 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $this->assertSame($customUserId, $model->created_by);
     }
 
-    public function testCreatedByIsRequiredWhenUserNotAuthenticated(): void
+    public function testCreatedByIsNullableWhenUserNotAuthenticated(): void
     {
         // Ensure no user is logged in
         Auth::logout();
         Auth::forgetGuards();
 
         // FullAttributesModel has created_by in its pre-populated attributes,
-        // so the required rule will be applied
+        // but created_by is nullable so it should save without errors
         $model = new FullAttributesModel();
         $model->name = 'Test';
+        $model->save();
 
-        try {
-            $model->save();
-            $this->fail('Expected ValidationException because created_by is required and user is not authenticated');
-        } catch (ValidationException $e) {
-            $errors = $e->getErrors();
-            $createdByError = array_filter($errors, fn($err) => $err['field'] === 'created_by');
-            $this->assertNotEmpty($createdByError, 'Expected validation error for created_by field');
-        }
+        // created_by should be null since no user was authenticated
+        $this->assertNull($model->created_by);
     }
 
     public function testBeforeValidateDoesNotPopulateCreatedByOnExistingModel(): void

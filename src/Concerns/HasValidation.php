@@ -124,15 +124,15 @@ trait HasValidation
             $defaultRules[self::CREATED_AT] = ['required', 'date'];
         }
 
-        if ($this->hasAttribute(self::CREATED_BY)) {
-            $defaultRules[self::CREATED_BY] = $this->buildForeignKeyRules($usersTable);
+        if ($this->usesBlamable() && $this->hasAttribute(self::CREATED_BY)) {
+            $defaultRules[self::CREATED_BY] = $this->buildForeignKeyRules($usersTable, false);
         }
 
         if ($this->hasAttribute(self::UPDATED_AT)) {
             $defaultRules[self::UPDATED_AT] = ['nullable', 'date'];
         }
 
-        if ($this->hasAttribute(self::UPDATED_BY)) {
+        if ($this->usesBlamable() && $this->hasAttribute(self::UPDATED_BY)) {
             $defaultRules[self::UPDATED_BY] = $this->buildForeignKeyRules($usersTable, false);
         }
 
@@ -140,7 +140,7 @@ trait HasValidation
             $defaultRules[self::DELETED_AT] = ['nullable', 'date'];
         }
 
-        if ($this->hasAttribute(self::DELETED_BY)) {
+        if ($this->usesBlamable() && $this->hasAttribute(self::DELETED_BY)) {
             $defaultRules[self::DELETED_BY] = $this->buildForeignKeyRules($usersTable, false);
         }
 
@@ -162,8 +162,7 @@ trait HasValidation
         $requiredRule = $required ? 'required' : 'nullable';
 
         if ($this->usesExternalId()) {
-            $column = $this->getExternalIdColumn();
-            return [$requiredRule, 'uuid', 'string', "exists:{$table},{$column}"];
+            return [$requiredRule, 'uuid', 'string', "exists:{$table},{$this->getExternalIdColumn()}"];
         }
 
         return [$requiredRule, 'integer', "exists:{$table},{$this->primaryKey}"];
@@ -241,21 +240,23 @@ trait HasValidation
             $this->setAttribute(static::UPDATED_AT, $now);
         }
 
-        // Autopopulate created_by if not set, model is new, and column exists
-        $createdByColumn = $this->getCreatedByColumn();
-        if (!$this->exists && empty($this->getAttribute($createdByColumn))) {
-            $userId = $this->getBlamableUserId();
-            if ($userId !== null) {
-                $this->setAttribute($createdByColumn, $userId);
+        // Autopopulate created_by if not set, model is new, blamable enabled, and column exists
+        if ($this->usesBlamable()) {
+            $createdByColumn = $this->getCreatedByColumn();
+            if (!$this->exists && empty($this->getAttribute($createdByColumn))) {
+                $userId = $this->getBlamableUserId();
+                if ($userId !== null) {
+                    $this->setAttribute($createdByColumn, $userId);
+                }
             }
-        }
 
-        // Autopopulate updated_by if not set and column exists
-        $updatedByColumn = $this->getUpdatedByColumn();
-        if (empty($this->getAttribute($updatedByColumn))) {
-            $userId = $this->getBlamableUserId();
-            if ($userId !== null) {
-                $this->setAttribute($updatedByColumn, $userId);
+            // Autopopulate updated_by if not set and column exists
+            $updatedByColumn = $this->getUpdatedByColumn();
+            if (empty($this->getAttribute($updatedByColumn))) {
+                $userId = $this->getBlamableUserId();
+                if ($userId !== null) {
+                    $this->setAttribute($updatedByColumn, $userId);
+                }
             }
         }
     }

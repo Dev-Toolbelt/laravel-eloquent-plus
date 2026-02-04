@@ -19,6 +19,8 @@ class ExternalIdWithBlamableModel extends ModelBase
 
     protected bool $usesExternalId = true;
 
+    protected bool $usesBlamable = true;
+
     protected array $rules = [];
 
     public function __construct(array $attributes = [])
