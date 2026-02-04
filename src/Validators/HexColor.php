@@ -65,4 +65,26 @@ final class HexColor implements ValidationRule
             $fail('The :attribute must be a valid hexadecimal color (e.g., #FFF or #FFFFFF).');
         }
     }
+
+    /**
+     * Determine if the validation rule passes.
+     *
+     * This method can be used for simple boolean validation checks,
+     * useful for Validator::extend() registration.
+     *
+     * @param mixed $value The value to validate
+     * @return bool True if valid, false otherwise
+     */
+    public function passes(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        if (!is_string($value)) {
+            return false;
+        }
+
+        return (bool) preg_match(self::PATTERN, $value);
+    }
 }

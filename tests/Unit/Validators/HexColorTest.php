@@ -187,4 +187,51 @@ final class HexColorTest extends TestCase
 
         $this->assertTrue($failed, 'Array value should be invalid');
     }
+
+    // Tests for passes() method
+
+    public function testPassesReturnsTrueForValidColor(): void
+    {
+        $this->assertTrue($this->validator->passes('#FF5733'));
+    }
+
+    public function testPassesReturnsTrueForValidShortColor(): void
+    {
+        $this->assertTrue($this->validator->passes('#FFF'));
+    }
+
+    public function testPassesReturnsTrueForColorWithoutHash(): void
+    {
+        $this->assertTrue($this->validator->passes('FF5733'));
+    }
+
+    public function testPassesReturnsFalseForInvalidColor(): void
+    {
+        $this->assertFalse($this->validator->passes('not-a-color'));
+    }
+
+    public function testPassesReturnsFalseForInvalidLength(): void
+    {
+        $this->assertFalse($this->validator->passes('#FFFF'));
+    }
+
+    public function testPassesReturnsTrueForNull(): void
+    {
+        $this->assertTrue($this->validator->passes(null));
+    }
+
+    public function testPassesReturnsTrueForEmptyString(): void
+    {
+        $this->assertTrue($this->validator->passes(''));
+    }
+
+    public function testPassesReturnsFalseForNonString(): void
+    {
+        $this->assertFalse($this->validator->passes(123456));
+    }
+
+    public function testPassesReturnsFalseForArray(): void
+    {
+        $this->assertFalse($this->validator->passes(['#FFF']));
+    }
 }

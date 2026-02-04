@@ -66,6 +66,77 @@ final class CpfCnpjValidator implements ValidationRule
     }
 
     /**
+     * Determine if the validation rule passes.
+     *
+     * This method can be used for simple boolean validation checks,
+     * useful for Validator::extend() registration.
+     *
+     * @param mixed $value The value to validate
+     * @return bool True if valid, false otherwise
+     */
+    public function passes(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        $value = $this->sanitize((string) $value);
+        $length = strlen($value);
+
+        if ($length === self::CPF_LENGTH) {
+            return $this->validateCpf($value);
+        }
+
+        if ($length === self::CNPJ_LENGTH) {
+            return $this->validateCnpj($value);
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if the value is a valid CPF only.
+     *
+     * @param mixed $value The value to validate
+     * @return bool True if valid CPF, false otherwise
+     */
+    public function passesCpf(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        $value = $this->sanitize((string) $value);
+
+        if (strlen($value) !== self::CPF_LENGTH) {
+            return false;
+        }
+
+        return $this->validateCpf($value);
+    }
+
+    /**
+     * Determine if the value is a valid CNPJ only.
+     *
+     * @param mixed $value The value to validate
+     * @return bool True if valid CNPJ, false otherwise
+     */
+    public function passesCnpj(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        $value = $this->sanitize((string) $value);
+
+        if (strlen($value) !== self::CNPJ_LENGTH) {
+            return false;
+        }
+
+        return $this->validateCnpj($value);
+    }
+
+    /**
      * Remove all non-numeric characters from the value.
      *
      * @param string $value

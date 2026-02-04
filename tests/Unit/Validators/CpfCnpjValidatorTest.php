@@ -265,4 +265,97 @@ final class CpfCnpjValidatorTest extends TestCase
             'invalid second check digit' => ['11444777000171'],
         ];
     }
+
+    // Tests for passes() method
+
+    public function testPassesReturnsTrueForValidCpf(): void
+    {
+        $this->assertTrue($this->validator->passes('529.982.247-25'));
+    }
+
+    public function testPassesReturnsTrueForValidCnpj(): void
+    {
+        $this->assertTrue($this->validator->passes('11.444.777/0001-61'));
+    }
+
+    public function testPassesReturnsFalseForInvalidCpf(): void
+    {
+        $this->assertFalse($this->validator->passes('529.982.247-26'));
+    }
+
+    public function testPassesReturnsFalseForInvalidCnpj(): void
+    {
+        $this->assertFalse($this->validator->passes('11.444.777/0001-62'));
+    }
+
+    public function testPassesReturnsTrueForNull(): void
+    {
+        $this->assertTrue($this->validator->passes(null));
+    }
+
+    public function testPassesReturnsTrueForEmptyString(): void
+    {
+        $this->assertTrue($this->validator->passes(''));
+    }
+
+    public function testPassesReturnsFalseForInvalidLength(): void
+    {
+        $this->assertFalse($this->validator->passes('123456'));
+    }
+
+    // Tests for passesCpf() method
+
+    public function testPassesCpfReturnsTrueForValidCpf(): void
+    {
+        $this->assertTrue($this->validator->passesCpf('529.982.247-25'));
+    }
+
+    public function testPassesCpfReturnsFalseForInvalidCpf(): void
+    {
+        $this->assertFalse($this->validator->passesCpf('529.982.247-26'));
+    }
+
+    public function testPassesCpfReturnsFalseForCnpj(): void
+    {
+        // CNPJ should fail CPF-only validation
+        $this->assertFalse($this->validator->passesCpf('11.444.777/0001-61'));
+    }
+
+    public function testPassesCpfReturnsTrueForNull(): void
+    {
+        $this->assertTrue($this->validator->passesCpf(null));
+    }
+
+    public function testPassesCpfReturnsTrueForEmptyString(): void
+    {
+        $this->assertTrue($this->validator->passesCpf(''));
+    }
+
+    // Tests for passesCnpj() method
+
+    public function testPassesCnpjReturnsTrueForValidCnpj(): void
+    {
+        $this->assertTrue($this->validator->passesCnpj('11.444.777/0001-61'));
+    }
+
+    public function testPassesCnpjReturnsFalseForInvalidCnpj(): void
+    {
+        $this->assertFalse($this->validator->passesCnpj('11.444.777/0001-62'));
+    }
+
+    public function testPassesCnpjReturnsFalseForCpf(): void
+    {
+        // CPF should fail CNPJ-only validation
+        $this->assertFalse($this->validator->passesCnpj('529.982.247-25'));
+    }
+
+    public function testPassesCnpjReturnsTrueForNull(): void
+    {
+        $this->assertTrue($this->validator->passesCnpj(null));
+    }
+
+    public function testPassesCnpjReturnsTrueForEmptyString(): void
+    {
+        $this->assertTrue($this->validator->passesCnpj(''));
+    }
 }

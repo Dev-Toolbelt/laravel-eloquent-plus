@@ -464,7 +464,7 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $this->assertSame($user->id, $model->updated_by);
     }
 
-    public function testBeforeValidateDirectlyPopulatesCreatedBy(): void
+    public function testAutoPopulateFieldsDirectlyPopulatesCreatedBy(): void
     {
         $user = new TestUser();
         $user->name = 'Test User';
@@ -480,16 +480,16 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         // Ensure created_by is null
         $this->assertNull($model->getAttribute('created_by'));
 
-        // Call beforeValidate directly via reflection to test the actual ModelBase implementation
-        $reflection = new \ReflectionMethod($model, 'beforeValidate');
+        // Call autoPopulateFields directly via reflection to test the actual implementation
+        $reflection = new \ReflectionMethod($model, 'autoPopulateFields');
         $reflection->setAccessible(true);
         $reflection->invoke($model);
 
-        // created_by should be set by beforeValidate
+        // created_by should be set by autoPopulateFields
         $this->assertSame($user->id, $model->getAttribute('created_by'));
     }
 
-    public function testBeforeValidateDirectlyPopulatesUpdatedBy(): void
+    public function testAutoPopulateFieldsDirectlyPopulatesUpdatedBy(): void
     {
         $user = new TestUser();
         $user->name = 'Test User';
@@ -505,12 +505,12 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         // Ensure updated_by is null
         $this->assertNull($model->getAttribute('updated_by'));
 
-        // Call beforeValidate directly via reflection to test the actual ModelBase implementation
-        $reflection = new \ReflectionMethod($model, 'beforeValidate');
+        // Call autoPopulateFields directly via reflection to test the actual implementation
+        $reflection = new \ReflectionMethod($model, 'autoPopulateFields');
         $reflection->setAccessible(true);
         $reflection->invoke($model);
 
-        // updated_by should be set by beforeValidate
+        // updated_by should be set by autoPopulateFields
         $this->assertSame($user->id, $model->getAttribute('updated_by'));
     }
 }

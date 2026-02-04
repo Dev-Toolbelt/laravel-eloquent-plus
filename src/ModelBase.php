@@ -6,6 +6,7 @@ namespace DevToolbelt\LaravelEloquentPlus;
 
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasAutoCasting;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasBlamable;
+use DevToolbelt\LaravelEloquentPlus\Concerns\HasCastAliases;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasDateFormatting;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasExternalId;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasHiddenAttributes;
@@ -37,6 +38,7 @@ abstract class ModelBase extends Model
     use HasFactory;
     use SoftDeletes;
     use HasBlamable;
+    use HasCastAliases;
     use HasExternalId;
     use HasValidation;
     use HasDateFormatting;
@@ -216,49 +218,5 @@ abstract class ModelBase extends Model
         return array_filter($this->toArray(), function ($key) use ($fieldsToReturn) {
             return in_array($key, $fieldsToReturn);
         }, ARRAY_FILTER_USE_KEY);
-    }
-
-    /**
-     * Hook executed before validation runs.
-     *
-     * Automatically populates required fields that have automatic mechanisms:
-     * - created_at: Set to current timestamp if timestamps are enabled
-     * - created_by: Set to authenticated user ID if available
-     * - updated_at: Set to current timestamp if timestamps are enabled
-     * - updated_by: Set to authenticated user ID if available
-     *
-     * @return void
-     */
-    protected function beforeValidate(): void
-    {
-        $now = $this->freshTimestamp();
-
-        // Auto-populate created_at if not set and model is new
-        if ($this->timestamps && !$this->exists && $this->getAttribute(self::CREATED_AT) === null) {
-            $this->setAttribute(self::CREATED_AT, $now);
-        }
-
-        // Auto-populate updated_at if not set
-        if ($this->timestamps && $this->getAttribute(self::UPDATED_AT) === null) {
-            $this->setAttribute(self::UPDATED_AT, $now);
-        }
-
-        // Auto-populate created_by if not set, model is new, and column exists
-        $createdByColumn = $this->getCreatedByColumn();
-        if ($createdByColumn !== null && !$this->exists && $this->getAttribute($createdByColumn) === null) {
-            $userId = $this->getBlamableUserId();
-            if ($userId !== null) {
-                $this->setAttribute($createdByColumn, $userId);
-            }
-        }
-
-        // Auto-populate updated_by if not set and column exists
-        $updatedByColumn = $this->getUpdatedByColumn();
-        if ($updatedByColumn !== null && $this->getAttribute($updatedByColumn) === null) {
-            $userId = $this->getBlamableUserId();
-            if ($userId !== null) {
-                $this->setAttribute($updatedByColumn, $userId);
-            }
-        }
     }
 }
