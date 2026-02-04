@@ -30,7 +30,7 @@ trait HasBlamable
      *
      * @return void
      */
-    protected static function bootBlamable(): void
+    protected static function bootHasBlamable(): void
     {
         static::creating(static function (ModelBase $model): void {
             $userId = $model->getBlamableUserId();

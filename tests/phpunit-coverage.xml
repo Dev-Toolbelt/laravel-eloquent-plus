@@ -43,10 +43,6 @@
         <include>
             <directory suffix=".php">../src</directory>
         </include>
-        <exclude>
-            <directory suffix=".php">../src/Enum</directory>
-            <file>../src/FastCrudServiceProvider.php</file>
-        </exclude>
     </source>
 
     <php>
