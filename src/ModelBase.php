@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus;
 
-use DevToolbelt\LaravelEloquentPlus\Concerns\HasBlamable;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasAutoCasting;
+use DevToolbelt\LaravelEloquentPlus\Concerns\HasBlamable;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasDateFormatting;
+use DevToolbelt\LaravelEloquentPlus\Concerns\HasExternalId;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasHiddenAttributes;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasLifecycleHooks;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasValidation;
@@ -26,6 +27,7 @@ use Illuminate\Support\Str;
  * - Lifecycle hooks for custom logic (HasLifecycleHooks)
  * - Automatic hidden attributes for soft deletes (HasHiddenAttributes)
  * - Built-in soft deletes with user tracking (HasBlamable)
+ * - Optional external ID (UUID) support (HasExternalId)
  * - Automatic snake_case attribute conversion on fill
  *
  * @package DevToolbelt\LaravelEloquentPlus
@@ -35,6 +37,7 @@ abstract class ModelBase extends Model
     use HasFactory;
     use SoftDeletes;
     use HasBlamable;
+    use HasExternalId;
     use HasValidation;
     use HasDateFormatting;
     use HasAutoCasting;
@@ -91,6 +94,13 @@ abstract class ModelBase extends Model
      * @var bool
      */
     public static $snakeAttributes = false;
+
+    /**
+     * The primary key for the model.
+     *
+     * @var string
+     */
+    protected $primaryKey = 'id';
 
     /**
      * The "type" of the primary key ID.
@@ -160,15 +170,38 @@ abstract class ModelBase extends Model
     }
 
     /**
+     * Convert the model instance to an array.
+     *
+     * When external ID is enabled, exposes 'id' with the external ID value
+     * instead of the numeric primary key for public-facing output.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $data = parent::toArray();
+
+        if ($this->usesExternalId()) {
+            $data[$this->primaryKey] = $this->getExternalId();
+        }
+
+        return $data;
+    }
+
+    /**
      * Convert the model to a minimal array representation.
      *
-     * Returns only the primary key field, useful for references
-     * or lightweight serialization.
+     * Returns only the primary key field (or external ID if enabled),
+     * useful for references or lightweight serialization.
      *
-     * @return array<string, mixed> Array containing only the primary key
+     * @return array<string, mixed> Array containing only the identifier
      */
     public function toSoftArray(): array
     {
+        if ($this->usesExternalId()) {
+            return [$this->primaryKey => $this->getExternalId()];
+        }
+
         return $this->returnOnlyFields([$this->primaryKey]);
     }
 

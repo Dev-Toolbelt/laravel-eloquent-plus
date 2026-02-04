@@ -109,8 +109,9 @@ trait HasValidation
             $defaultRules[$this->primaryKey] = ['nullable', 'integer'];
         }
 
-        if ($this->hasAttribute('external_id')) {
-            $defaultRules['external_id'] = ['required', 'uuid', 'string', 'size:36'];
+        if ($this->usesExternalId()) {
+            $column = $this->getExternalIdColumn();
+            $defaultRules[$column] = ['required', 'uuid', 'string', 'size:36'];
         }
 
         if ($this->hasAttribute(self::CREATED_AT)) {
