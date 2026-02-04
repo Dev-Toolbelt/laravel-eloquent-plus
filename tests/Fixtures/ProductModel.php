@@ -18,4 +18,19 @@ class ProductModel extends ModelBase
     protected bool $usesExternalId = true;
 
     protected array $rules = [];
+
+    public function __construct(array $attributes = [])
+    {
+        // Pre-populate attributes to make hasAttribute return true
+        $this->attributes = [
+            'id' => null,
+            'external_id' => null,
+            'name' => null,
+            'created_at' => null,
+            'updated_at' => null,
+            'deleted_at' => null,
+        ];
+
+        parent::__construct($attributes);
+    }
 }

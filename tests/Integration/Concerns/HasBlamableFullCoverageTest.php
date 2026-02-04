@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\BlamableWithoutConstantsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ForceDeleteModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\NoBlamableConstantsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\NoDeletedByModel;
@@ -441,5 +442,38 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $model->delete();
 
         $this->assertNotNull($model->deleted_at);
+    }
+
+    public function testGetCreatedByColumnReturnsNullWhenConstantNotDefinedInClass(): void
+    {
+        // BlamableWithoutConstantsModel extends Model directly (not ModelBase)
+        // so it doesn't have the CREATED_BY constant defined
+        $model = new BlamableWithoutConstantsModel();
+
+        // This tests the actual `return null` branch in getCreatedByColumn()
+        // when defined(static::class . '::CREATED_BY') returns false
+        $this->assertNull($model->testGetCreatedByColumn());
+    }
+
+    public function testGetUpdatedByColumnReturnsNullWhenConstantNotDefinedInClass(): void
+    {
+        // BlamableWithoutConstantsModel extends Model directly (not ModelBase)
+        // so it doesn't have the UPDATED_BY constant defined
+        $model = new BlamableWithoutConstantsModel();
+
+        // This tests the actual `return null` branch in getUpdatedByColumn()
+        // when defined(static::class . '::UPDATED_BY') returns false
+        $this->assertNull($model->testGetUpdatedByColumn());
+    }
+
+    public function testGetDeletedByColumnReturnsNullWhenConstantNotDefinedInClass(): void
+    {
+        // BlamableWithoutConstantsModel extends Model directly (not ModelBase)
+        // so it doesn't have the DELETED_BY constant defined
+        $model = new BlamableWithoutConstantsModel();
+
+        // This tests the actual `return null` branch in getDeletedByColumn()
+        // when defined(static::class . '::DELETED_BY') returns false
+        $this->assertNull($model->testGetDeletedByColumn());
     }
 }
