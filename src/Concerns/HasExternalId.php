@@ -120,6 +120,7 @@ trait HasExternalId
      */
     public static function findByExternalId(string $externalId): ?static
     {
+        /** @phpstan-ignore new.static */
         $instance = new static();
 
         if (!$instance->usesExternalId()) {
@@ -141,6 +142,7 @@ trait HasExternalId
      */
     public static function findByExternalIdOrFail(string $externalId): static
     {
+        /** @phpstan-ignore new.static */
         $instance = new static();
 
         if (!$instance->usesExternalId()) {
