@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Casts;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use stdClass;
 
 /**
@@ -89,16 +89,16 @@ final readonly class UuidToIdCast implements CastsAttributes
         }
 
         $record = $this->findRelatedRecord($value);
+        $pkColumn = $this->relatedPkName ?? 'id';
 
         if (!$record) {
-            throw ValidationException::withMessages([
-                $key => [
-                    "The selected '{$key}' is invalid. Record not found in {$this->relatedTableName}.",
-                ],
-            ]);
-        }
+            $message = "The selected '{$key}' is invalid. Record not found in '{$this->relatedTableName}'.";
 
-        $pkColumn = $this->relatedPkName ?? 'id';
+            throw new ValidationException(
+                [['field' => $key, 'error' => 'relationRecordNotFound', 'value' => $value, 'message' => $message]],
+                $message
+            );
+        }
 
         return $record->{$pkColumn};
     }
