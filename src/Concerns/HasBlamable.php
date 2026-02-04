@@ -20,10 +20,10 @@ use DevToolbelt\LaravelEloquentPlus\ModelBase;
  *
  * @package DevToolbelt\LaravelEloquentPlus\Concerns
  */
-trait Blamable
+trait HasBlamable
 {
     /**
-     * Boot the Blamable trait.
+     * Boot the HasBlamable trait.
      *
      * Registers model event listeners to automatically set audit columns
      * on creating, updating, deleting, and restoring events.
