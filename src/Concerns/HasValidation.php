@@ -160,11 +160,6 @@ trait HasValidation
     private function buildForeignKeyRules(string $table, bool $required = true): array
     {
         $requiredRule = $required ? 'required' : 'nullable';
-
-        if ($this->usesExternalId()) {
-            return [$requiredRule, 'uuid', 'string', "exists:{$table},{$this->getExternalIdColumn()}"];
-        }
-
         return [$requiredRule, 'integer', "exists:{$table},{$this->primaryKey}"];
     }
 
