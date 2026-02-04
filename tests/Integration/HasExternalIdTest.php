@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\ExternalIdNotEnabledException;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ExternalIdModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\SimpleModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\IntegrationTestCase;
@@ -101,11 +102,11 @@ final class HasExternalIdTest extends IntegrationTestCase
         $this->assertNull($found);
     }
 
-    public function testFindByExternalIdReturnsNullWhenDisabled(): void
+    public function testFindByExternalIdThrowsWhenDisabled(): void
     {
-        $found = SimpleModel::findByExternalId('any-uuid');
+        $this->expectException(ExternalIdNotEnabledException::class);
 
-        $this->assertNull($found);
+        SimpleModel::findByExternalId('any-uuid');
     }
 
     public function testFindByExternalIdOrFail(): void
@@ -128,8 +129,7 @@ final class HasExternalIdTest extends IntegrationTestCase
 
     public function testFindByExternalIdOrFailThrowsWhenDisabled(): void
     {
-        $this->expectException(ModelNotFoundException::class);
-        $this->expectExceptionMessage('External ID is not enabled');
+        $this->expectException(ExternalIdNotEnabledException::class);
 
         SimpleModel::findByExternalIdOrFail('any-uuid');
     }

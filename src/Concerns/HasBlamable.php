@@ -157,16 +157,11 @@ trait HasBlamable
      *
      * Looks for the CREATED_BY constant in the model class.
      *
-     * @return string|null The column name, or null if constant is not defined
+     * @return string The column name, or null if constant is not defined
      */
-    protected function getCreatedByColumn(): ?string
+    protected function getCreatedByColumn(): string
     {
-        if (defined(static::class . '::CREATED_BY')) {
-            /** @var string */
-            return constant(static::class . '::CREATED_BY');
-        }
-
-        return null;
+        return $this::CREATED_BY;
     }
 
     /**
@@ -174,16 +169,11 @@ trait HasBlamable
      *
      * Looks for the UPDATED_BY constant in the model class.
      *
-     * @return string|null The column name, or null if constant is not defined
+     * @return string The column name, or null if constant is not defined
      */
-    protected function getUpdatedByColumn(): ?string
+    protected function getUpdatedByColumn(): string
     {
-        if (defined(static::class . '::UPDATED_BY')) {
-            /** @var string */
-            return constant(static::class . '::UPDATED_BY');
-        }
-
-        return null;
+        return $this::UPDATED_BY;
     }
 
     /**
@@ -191,16 +181,11 @@ trait HasBlamable
      *
      * Looks for the DELETED_BY constant in the model class.
      *
-     * @return string|null The column name, or null if constant is not defined
+     * @return string The column name, or null if constant is not defined
      */
-    protected function getDeletedByColumn(): ?string
+    protected function getDeletedByColumn(): string
     {
-        if (defined(static::class . '::DELETED_BY')) {
-            /** @var string */
-            return constant(static::class . '::DELETED_BY');
-        }
-
-        return null;
+        return $this::DELETED_BY;
     }
 
     /**

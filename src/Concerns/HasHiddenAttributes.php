@@ -35,7 +35,7 @@ trait HasHiddenAttributes
      */
     private function setupHidden(): void
     {
-        $defaultHidden = [$this->primaryKey];
+        $defaultHidden = [];
 
         if ($this->hasAttribute(static::DELETED_AT)) {
             $defaultHidden[] = static::DELETED_AT;
@@ -45,8 +45,12 @@ trait HasHiddenAttributes
             $defaultHidden[] = static::DELETED_BY;
         }
 
-        if ($this->usesExternalId() && $this->hasAttribute($this->getExternalIdColumn())) {
-            $defaultHidden[] = $this->getExternalIdColumn();
+        if ($this->usesExternalId()) {
+            $defaultHidden[] = $this->primaryKey;
+
+            if ($this->hasAttribute($this->getExternalIdColumn())) {
+                $defaultHidden[] = $this->getExternalIdColumn();
+            }
         }
 
         $this->hidden = array_unique([...$defaultHidden, ...$this->hidden]);

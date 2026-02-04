@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\LaravelEloquentPlusException;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\CastTestModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\DateTimeFormatModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\FakeEnumRule;
@@ -15,15 +16,12 @@ use Illuminate\Validation\Rules\Enum;
 
 final class HasAutoCastingFullCoverageTest extends IntegrationTestCase
 {
-    public function testSetupCastsSkipsStringRules(): void
+    public function testSetupCastsThrowsExceptionForStringRules(): void
     {
-        $model = new StringRulesModel();
+        $this->expectException(LaravelEloquentPlusException::class);
+        $this->expectExceptionMessage('Use the list of validators in array format for validation by the model.');
 
-        // String rules should be skipped, no casts added
-        $casts = $model->getCasts();
-
-        // Only default Laravel casts should exist
-        $this->assertArrayNotHasKey('title', $casts);
+        new StringRulesModel();
     }
 
     public function testSetupCastsBooleanRule(): void

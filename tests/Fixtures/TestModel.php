@@ -12,6 +12,8 @@ class TestModel extends ModelBase
 {
     protected $table = 'test_models';
 
+    protected bool $usesBlamable = true;
+
     protected $fillable = [
         'name',
         'email',
