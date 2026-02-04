@@ -6,9 +6,6 @@ namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration\Concerns;
 
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\BlamableWithoutConstantsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ForceDeleteModel;
-use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\NoBlamableConstantsModel;
-use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\NoDeletedByModel;
-use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\NoUpdatedByModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestUser;
 use DevToolbelt\LaravelEloquentPlus\Tests\IntegrationTestCase;
@@ -62,16 +59,6 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $this->assertSame('created_by', $reflection->invoke($model));
     }
 
-    public function testGetCreatedByColumnReturnsNullWhenConstantNotDefined(): void
-    {
-        $model = new NoBlamableConstantsModel();
-
-        $reflection = new \ReflectionMethod($model, 'getCreatedByColumn');
-        $reflection->setAccessible(true);
-
-        $this->assertNull($reflection->invoke($model));
-    }
-
     public function testGetUpdatedByColumnReturnsColumnName(): void
     {
         $model = new TestModel();
@@ -82,16 +69,6 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $this->assertSame('updated_by', $reflection->invoke($model));
     }
 
-    public function testGetUpdatedByColumnReturnsNullWhenConstantNotDefined(): void
-    {
-        $model = new NoBlamableConstantsModel();
-
-        $reflection = new \ReflectionMethod($model, 'getUpdatedByColumn');
-        $reflection->setAccessible(true);
-
-        $this->assertNull($reflection->invoke($model));
-    }
-
     public function testGetDeletedByColumnReturnsColumnName(): void
     {
         $model = new TestModel();
@@ -100,16 +77,6 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $reflection->setAccessible(true);
 
         $this->assertSame('deleted_by', $reflection->invoke($model));
-    }
-
-    public function testGetDeletedByColumnReturnsNullWhenConstantNotDefined(): void
-    {
-        $model = new NoBlamableConstantsModel();
-
-        $reflection = new \ReflectionMethod($model, 'getDeletedByColumn');
-        $reflection->setAccessible(true);
-
-        $this->assertNull($reflection->invoke($model));
     }
 
     public function testUsesSoftDeletesReturnsTrue(): void
@@ -260,18 +227,6 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $this->assertSame(123, $model->deleted_by);
     }
 
-    public function testBlamableWithModelWithoutConstants(): void
-    {
-        Auth::login($this->user);
-
-        $model = new NoBlamableConstantsModel();
-        $model->title = 'Test';
-        $model->save();
-
-        // Model has no CREATED_BY/UPDATED_BY constants, so nothing should be set
-        $this->assertFalse(isset($model->created_by));
-    }
-
     public function testUsesSoftDeletesMethodChecksForIsForceDeleting(): void
     {
         // The usesSoftDeletes method checks for isForceDeleting method existence
@@ -286,80 +241,6 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
 
         // Verify the logic by checking method_exists directly
         $this->assertTrue(method_exists($model, 'isForceDeleting'));
-    }
-
-    public function testUpdatingEventWithNullUpdatedByColumn(): void
-    {
-        Auth::login($this->user);
-
-        $model = new NoUpdatedByModel();
-        $model->name = 'Test';
-        $model->save();
-
-        // Update should work even when getUpdatedByColumn returns null
-        $model->name = 'Updated';
-        $model->save();
-
-        // Model should be updated successfully
-        $this->assertSame('Updated', $model->name);
-    }
-
-    public function testDeletingEventWithNullDeletedByColumn(): void
-    {
-        Auth::login($this->user);
-
-        $model = new NoDeletedByModel();
-        $model->name = 'Test';
-        $model->save();
-
-        // Delete should work even when getDeletedByColumn returns null
-        $model->delete();
-
-        $this->assertNotNull($model->deleted_at);
-    }
-
-    public function testDeletingEventWithNullUpdatedByColumn(): void
-    {
-        Auth::login($this->user);
-
-        $model = new NoUpdatedByModel();
-        $model->name = 'Test';
-        $model->save();
-
-        // Delete should work even when getUpdatedByColumn returns null
-        $model->delete();
-
-        $this->assertNotNull($model->deleted_at);
-    }
-
-    public function testRestoringEventWithNullDeletedByColumn(): void
-    {
-        Auth::login($this->user);
-
-        $model = new NoDeletedByModel();
-        $model->name = 'Test';
-        $model->save();
-        $model->delete();
-
-        // Restore should work even when getDeletedByColumn returns null
-        $model->restore();
-
-        $this->assertNull($model->deleted_at);
-    }
-
-    public function testRestoringEventWithNullUpdatedByColumn(): void
-    {
-        Auth::login($this->user);
-
-        $model = new NoUpdatedByModel();
-        $model->name = 'Test';
-        $model->save();
-        $model->delete();
-
-        // Restore should work even when getUpdatedByColumn returns null
-        $model->restore();
-
-        $this->assertNull($model->deleted_at);
     }
 
     public function testDeletingEventDoesNotSetDeletedByOnForceDelete(): void
@@ -410,39 +291,6 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         // Both deleted_by and updated_by should be set
         $this->assertSame($this->user->id, $model->deleted_by);
         $this->assertSame($this->user->id, $model->updated_by);
-    }
-
-    public function testDeletingEventWithBothNullColumns(): void
-    {
-        Auth::login($this->user);
-
-        // Create a model that returns null for both deleted_by and updated_by columns
-        $model = new class extends \DevToolbelt\LaravelEloquentPlus\ModelBase {
-            protected $table = 'test_models';
-            protected $guarded = [];
-            protected array $rules = [
-                'name' => ['required', 'string', 'max:255'],
-            ];
-            protected bool $usesBlamable = false;
-
-            protected function getDeletedByColumn(): ?string
-            {
-                return null;
-            }
-
-            protected function getUpdatedByColumn(): ?string
-            {
-                return null;
-            }
-        };
-
-        $model->name = 'Test';
-        $model->save();
-
-        // Soft delete should still work even when both columns return null
-        $model->delete();
-
-        $this->assertNotNull($model->deleted_at);
     }
 
     public function testGetCreatedByColumnReturnsValueFromTraitConstant(): void

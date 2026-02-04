@@ -7,7 +7,6 @@ namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration\Concerns;
 use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ExternalIdWithBlamableModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\FullAttributesModel;
-use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\NoBlamableConstantsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\SimpleModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestUser;
@@ -391,25 +390,6 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
 
         // updated_by should now be populated
         $this->assertSame($user->id, $model->updated_by);
-    }
-
-    public function testBeforeValidateWithModelWithoutBlamableColumns(): void
-    {
-        $user = new TestUser();
-        $user->name = 'Test User';
-        $user->email = 'noblamable@example.com';
-        $user->save();
-
-        Auth::login($user);
-
-        // NoBlamableConstantsModel returns null for getCreatedByColumn/getUpdatedByColumn
-        // This tests the branch where $createdByColumn !== null is false
-        $model = new NoBlamableConstantsModel();
-        $model->title = 'Test';
-        $model->save();
-
-        // Model should save successfully without setting blamable columns
-        $this->assertDatabaseHas('simple_models', ['title' => 'Test']);
     }
 
     public function testBeforeValidateCreatedByNotPopulatedWhenNoUserAndColumnIsNull(): void

@@ -26,7 +26,7 @@ class BlamableWithoutConstantsModel extends Model
     /**
      * Expose protected method for testing.
      */
-    public function testGetCreatedByColumn(): ?string
+    public function testGetCreatedByColumn(): string
     {
         return $this->getCreatedByColumn();
     }
@@ -34,7 +34,7 @@ class BlamableWithoutConstantsModel extends Model
     /**
      * Expose protected method for testing.
      */
-    public function testGetUpdatedByColumn(): ?string
+    public function testGetUpdatedByColumn(): string
     {
         return $this->getUpdatedByColumn();
     }
@@ -42,7 +42,7 @@ class BlamableWithoutConstantsModel extends Model
     /**
      * Expose protected method for testing.
      */
-    public function testGetDeletedByColumn(): ?string
+    public function testGetDeletedByColumn(): string
     {
         return $this->getDeletedByColumn();
     }
