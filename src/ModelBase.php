@@ -184,6 +184,19 @@ abstract class ModelBase extends Model
     }
 
     /**
+     * Determine whether an attribute exists on the model.
+     *
+     * @param string $key
+     * @return bool
+     */
+    public function hasAttribute($key)
+    {
+        return parent::hasAttribute($key)
+            || in_array($key, $this->fillable)
+            || array_key_exists($key, $this->rules);
+    }
+
+    /**
      * Convert the model instance to an array.
      *
      * When external ID is enabled, exposes 'id' with the external ID value
