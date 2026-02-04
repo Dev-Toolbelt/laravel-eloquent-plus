@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use DevToolbelt\LaravelEloquentPlus\ModelBase;
 
 /**
@@ -23,79 +24,121 @@ use DevToolbelt\LaravelEloquentPlus\ModelBase;
 trait HasBlamable
 {
     /**
+     * The name of the "created by" column for audit tracking.
+     */
+    public const string CREATED_BY = 'created_by';
+
+    /**
+     * The name of the "updated by" column for audit tracking.
+     */
+    public const string UPDATED_BY = 'updated_by';
+
+    /**
+     * The name of the "deleted by" column for audit tracking.
+     */
+    public const string DELETED_BY = 'deleted_by';
+
+    /**
+     * Indicates if the model should use blamable (audit tracking).
+     *
+     * @var bool
+     */
+    protected bool $usesBlamable = false;
+
+    /**
      * Boot the HasBlamable trait.
      *
      * Registers model event listeners to automatically set audit columns
      * on creating, updating, deleting, and restoring events.
      *
      * @return void
+     * @throws MissingModelPropertyException
      */
     protected static function bootHasBlamable(): void
     {
         static::creating(static function (ModelBase $model): void {
+            if (!$model->usesBlamable()) {
+                return;
+            }
+
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
-            $createdBy = $model->getCreatedByColumn();
-            $updatedBy = $model->getUpdatedByColumn();
-
-            if ($createdBy !== null && $model->getAttribute($createdBy) === null) {
-                $model->setAttribute($createdBy, $userId);
+            if (!$model->getAttribute($model->getCreatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getCreatedByColumn());
             }
 
-            if ($updatedBy !== null && $model->getAttribute($updatedBy) === null) {
-                $model->setAttribute($updatedBy, $userId);
+            if (!$model->getAttribute($model->getUpdatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
             }
+
+            $model->setAttribute($model->getCreatedByColumn(), $userId);
+            $model->setAttribute($model->getUpdatedByColumn(), $userId);
         });
 
         static::updating(static function (ModelBase $model): void {
+            if (!$model->usesBlamable()) {
+                return;
+            }
+
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
-            $updatedBy = $model->getUpdatedByColumn();
-            if ($updatedBy !== null) {
-                $model->setAttribute($updatedBy, $userId);
+            if (!$model->getAttribute($model->getUpdatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
             }
+
+            $model->setAttribute($model->getUpdatedByColumn(), $userId);
         });
 
         static::deleting(static function (ModelBase $model): void {
+            if (!$model->usesBlamable()) {
+                return;
+            }
+
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
             if ($model->usesSoftDeletes() && !$model->isForceDeleting()) {
-                $deletedBy = $model->getDeletedByColumn();
-                if ($deletedBy !== null) {
-                    $model->setAttribute($deletedBy, $userId);
+                if (!$model->getAttribute($model->getDeletedByColumn())) {
+                    throw new MissingModelPropertyException($model::class, $model->getDeletedByColumn());
                 }
 
-                $updatedBy = $model->getUpdatedByColumn();
-                if ($updatedBy !== null) {
-                    $model->setAttribute($updatedBy, $userId);
+                if (!$model->getAttribute($model->getUpdatedByColumn())) {
+                    throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
                 }
+
+                $model->setAttribute($model->getDeletedByColumn(), $userId);
+                $model->setAttribute($model->getUpdatedByColumn(), $userId);
             }
         });
 
         static::restoring(static function (ModelBase $model): void {
+            if (!$model->usesBlamable()) {
+                return;
+            }
+
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
-            $deletedBy = $model->getDeletedByColumn();
-            if ($deletedBy !== null) {
-                $model->setAttribute($deletedBy, null);
+            if (!$model->getAttribute($model->getDeletedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getDeletedByColumn());
             }
 
-            $updatedBy = $model->getUpdatedByColumn();
-            if ($updatedBy !== null) {
-                $model->setAttribute($updatedBy, $userId);
+            if (!$model->getAttribute($model->getUpdatedByColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
             }
+
+            $model->setAttribute($model->getDeletedByColumn(), null);
+            $model->setAttribute($model->getUpdatedByColumn(), $userId);
         });
     }
 
@@ -171,5 +214,15 @@ trait HasBlamable
     protected function usesSoftDeletes(): bool
     {
         return method_exists($this, 'isForceDeleting');
+    }
+
+    /**
+     * Determine if the model uses blamable (audit tracking).
+     *
+     * @return bool True if the model uses blamable, false otherwise
+     */
+    public function usesBlamable(): bool
+    {
+        return $this->usesBlamable;
     }
 }

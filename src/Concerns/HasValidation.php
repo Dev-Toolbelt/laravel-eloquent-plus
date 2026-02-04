@@ -217,7 +217,7 @@ trait HasValidation
     }
 
     /**
-     * Auto-populate fields before validation.
+     * Autopopulate fields before validation.
      *
      * Automatically populates required fields that have automatic mechanisms:
      * - created_at: Set to current timestamp if timestamps are enabled
@@ -231,28 +231,28 @@ trait HasValidation
     {
         $now = $this->freshTimestamp();
 
-        // Auto-populate created_at if not set and model is new
-        if ($this->timestamps && !$this->exists && $this->getAttribute(static::CREATED_AT) === null) {
+        // Autopopulate created_at if not set and model is new
+        if ($this->timestamps && !$this->exists && empty($this->getAttribute(static::CREATED_AT))) {
             $this->setAttribute(static::CREATED_AT, $now);
         }
 
-        // Auto-populate updated_at if not set
-        if ($this->timestamps && $this->getAttribute(static::UPDATED_AT) === null) {
+        // Autopopulate updated_at if not set
+        if ($this->timestamps && empty($this->getAttribute(static::UPDATED_AT))) {
             $this->setAttribute(static::UPDATED_AT, $now);
         }
 
-        // Auto-populate created_by if not set, model is new, and column exists
+        // Autopopulate created_by if not set, model is new, and column exists
         $createdByColumn = $this->getCreatedByColumn();
-        if ($createdByColumn !== null && !$this->exists && $this->getAttribute($createdByColumn) === null) {
+        if (!$this->exists && empty($this->getAttribute($createdByColumn))) {
             $userId = $this->getBlamableUserId();
             if ($userId !== null) {
                 $this->setAttribute($createdByColumn, $userId);
             }
         }
 
-        // Auto-populate updated_by if not set and column exists
+        // Autopopulate updated_by if not set and column exists
         $updatedByColumn = $this->getUpdatedByColumn();
-        if ($updatedByColumn !== null && $this->getAttribute($updatedByColumn) === null) {
+        if (empty($this->getAttribute($updatedByColumn))) {
             $userId = $this->getBlamableUserId();
             if ($userId !== null) {
                 $this->setAttribute($updatedByColumn, $userId);

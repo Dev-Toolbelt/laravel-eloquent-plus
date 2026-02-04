@@ -423,6 +423,7 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
             protected array $rules = [
                 'name' => ['required', 'string', 'max:255'],
             ];
+            protected bool $usesBlamable = false;
 
             protected function getDeletedByColumn(): ?string
             {
@@ -444,36 +445,30 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $this->assertNotNull($model->deleted_at);
     }
 
-    public function testGetCreatedByColumnReturnsNullWhenConstantNotDefinedInClass(): void
+    public function testGetCreatedByColumnReturnsValueFromTraitConstant(): void
     {
-        // BlamableWithoutConstantsModel extends Model directly (not ModelBase)
-        // so it doesn't have the CREATED_BY constant defined
+        // BlamableWithoutConstantsModel uses HasBlamable trait which defines CREATED_BY constant
         $model = new BlamableWithoutConstantsModel();
 
-        // This tests the actual `return null` branch in getCreatedByColumn()
-        // when defined(static::class . '::CREATED_BY') returns false
-        $this->assertNull($model->testGetCreatedByColumn());
+        // The constant is now defined in the trait, so it should return the value
+        $this->assertSame('created_by', $model->testGetCreatedByColumn());
     }
 
-    public function testGetUpdatedByColumnReturnsNullWhenConstantNotDefinedInClass(): void
+    public function testGetUpdatedByColumnReturnsValueFromTraitConstant(): void
     {
-        // BlamableWithoutConstantsModel extends Model directly (not ModelBase)
-        // so it doesn't have the UPDATED_BY constant defined
+        // BlamableWithoutConstantsModel uses HasBlamable trait which defines UPDATED_BY constant
         $model = new BlamableWithoutConstantsModel();
 
-        // This tests the actual `return null` branch in getUpdatedByColumn()
-        // when defined(static::class . '::UPDATED_BY') returns false
-        $this->assertNull($model->testGetUpdatedByColumn());
+        // The constant is now defined in the trait, so it should return the value
+        $this->assertSame('updated_by', $model->testGetUpdatedByColumn());
     }
 
-    public function testGetDeletedByColumnReturnsNullWhenConstantNotDefinedInClass(): void
+    public function testGetDeletedByColumnReturnsValueFromTraitConstant(): void
     {
-        // BlamableWithoutConstantsModel extends Model directly (not ModelBase)
-        // so it doesn't have the DELETED_BY constant defined
+        // BlamableWithoutConstantsModel uses HasBlamable trait which defines DELETED_BY constant
         $model = new BlamableWithoutConstantsModel();
 
-        // This tests the actual `return null` branch in getDeletedByColumn()
-        // when defined(static::class . '::DELETED_BY') returns false
-        $this->assertNull($model->testGetDeletedByColumn());
+        // The constant is now defined in the trait, so it should return the value
+        $this->assertSame('deleted_by', $model->testGetDeletedByColumn());
     }
 }

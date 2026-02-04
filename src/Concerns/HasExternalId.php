@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use DevToolbelt\LaravelEloquentPlus\Exceptions\ExternalIdNotEnabledException;
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use Illuminate\Support\Str;
 
 /**
@@ -41,6 +42,7 @@ trait HasExternalId
      * a UUID for the external ID column if enabled.
      *
      * @return void
+     * @throws MissingModelPropertyException
      */
     protected static function bootHasExternalId(): void
     {
@@ -49,11 +51,11 @@ trait HasExternalId
                 return;
             }
 
-            $column = $model->getExternalIdColumn();
-
-            if ($model->getAttribute($column) === null) {
-                $model->setAttribute($column, Str::uuid7()->toString());
+            if (!$model->getAttribute($model->getExternalIdColumn())) {
+                throw new MissingModelPropertyException($model::class, $model->getExternalIdColumn());
             }
+
+            $model->setAttribute($model->getExternalIdColumn(), Str::uuid7()->toString());
         });
     }
 
@@ -71,10 +73,9 @@ trait HasExternalId
             return;
         }
 
-        $this->hidden = array_unique([
-            ...$this->hidden,
-            $this->externalIdColumn,
-            $this->primaryKey,
+        $this->fillable = array_unique([
+            ...$this->fillable,
+            $this->externalIdColumn
         ]);
     }
 
@@ -85,7 +86,7 @@ trait HasExternalId
      */
     public function usesExternalId(): bool
     {
-        return $this->usesExternalId && $this->hasAttribute($this->externalIdColumn);
+        return $this->usesExternalId;
     }
 
     /**
@@ -117,6 +118,7 @@ trait HasExternalId
      *
      * @param string $externalId The external ID to search for
      * @return static|null
+     * @throws ExternalIdNotEnabledException
      */
     public static function findByExternalId(string $externalId): ?static
     {
@@ -124,7 +126,7 @@ trait HasExternalId
         $instance = new static();
 
         if (!$instance->usesExternalId()) {
-            return null;
+            throw new ExternalIdNotEnabledException();
         }
 
         return static::query()
@@ -137,8 +139,7 @@ trait HasExternalId
      *
      * @param string $externalId The external ID to search for
      * @return static
-     *
-     * @throws ModelNotFoundException
+     * @throws ExternalIdNotEnabledException
      */
     public static function findByExternalIdOrFail(string $externalId): static
     {
@@ -146,9 +147,7 @@ trait HasExternalId
         $instance = new static();
 
         if (!$instance->usesExternalId()) {
-            throw new ModelNotFoundException(
-                'External ID is not enabled for this model.'
-            );
+            throw new ExternalIdNotEnabledException();
         }
 
         return static::query()

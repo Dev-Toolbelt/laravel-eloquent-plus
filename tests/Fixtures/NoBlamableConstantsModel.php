@@ -21,6 +21,8 @@ class NoBlamableConstantsModel extends ModelBase
 
     protected array $rules = [];
 
+    protected bool $usesBlamable = false;
+
     /**
      * Override to return null for testing purposes.
      */

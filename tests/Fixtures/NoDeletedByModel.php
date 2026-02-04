@@ -18,6 +18,8 @@ class NoDeletedByModel extends ModelBase
         'name' => ['required', 'string', 'max:255'],
     ];
 
+    protected bool $usesBlamable = false;
+
     /**
      * Override to return null for testing purposes.
      */

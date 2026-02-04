@@ -65,21 +65,6 @@ abstract class ModelBase extends Model
     public const string DELETED_AT = 'deleted_at';
 
     /**
-     * The name of the "created by" column for audit tracking.
-     */
-    public const string CREATED_BY = 'created_by';
-
-    /**
-     * The name of the "updated by" column for audit tracking.
-     */
-    public const string UPDATED_BY = 'updated_by';
-
-    /**
-     * The name of the "deleted by" column for audit tracking.
-     */
-    public const string DELETED_BY = 'deleted_by';
-
-    /**
      * Indicates if the model should be timestamped.
      *
      * @var bool

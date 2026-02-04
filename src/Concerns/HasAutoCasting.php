@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\LaravelEloquentPlusException;
 use Illuminate\Validation\Rules\Enum as ValidationEnum;
 use ReflectionClass;
 
@@ -26,6 +27,7 @@ trait HasAutoCasting
      * Initialize the HasAutoCasting trait.
      *
      * @return void
+     * @throws LaravelEloquentPlusException
      */
     protected function initializeHasAutoCasting(): void
     {
@@ -40,14 +42,21 @@ trait HasAutoCasting
      * allowing them to override automatic casts.
      *
      * @return void
+     * @throws LaravelEloquentPlusException
      */
     private function setupCasts(): void
     {
+        if (empty($this->getRules())) {
+            return;
+        }
+
         $defaultCasts = [];
 
         foreach ($this->rules as $attribute => $rules) {
             if (!is_array($rules)) {
-                continue;
+                throw new LaravelEloquentPlusException(
+                    'Use the list of validators in array format for validation by the model.'
+                );
             }
 
             if (in_array('boolean', $rules, true)) {

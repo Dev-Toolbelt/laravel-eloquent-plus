@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
-use Illuminate\Support\Carbon;
-
 /**
  * Trait for date/datetime formatting and output control.
  *
