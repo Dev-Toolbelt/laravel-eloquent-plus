@@ -54,17 +54,19 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $model = new ExternalIdWithBlamableModel();
         $rules = $model->getRules();
 
-        // With external ID enabled, blamable rules should use UUID validation
+        // Blamable rules always use integer validation for foreign keys
         // All blamable fields are nullable to allow saving without authenticated user
         $this->assertArrayHasKey('created_by', $rules);
         $this->assertContains('nullable', $rules['created_by']);
-        $this->assertContains('uuid', $rules['created_by']);
+        $this->assertContains('integer', $rules['created_by']);
 
         $this->assertArrayHasKey('updated_by', $rules);
         $this->assertContains('nullable', $rules['updated_by']);
+        $this->assertContains('integer', $rules['updated_by']);
 
         $this->assertArrayHasKey('deleted_by', $rules);
         $this->assertContains('nullable', $rules['deleted_by']);
+        $this->assertContains('integer', $rules['deleted_by']);
     }
 
     public function testSetupRulesAddsBlamableRulesWithoutExternalId(): void
