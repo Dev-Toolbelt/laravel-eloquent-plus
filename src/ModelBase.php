@@ -4,127 +4,179 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus;
 
-use Astrotech\Core\Base\Exception\RuntimeException;
-use Astrotech\Core\Base\Exception\ValidationException;
-use Astrotech\Core\Laravel\Eloquent\Casts\UuidToIdCast;
-use Astrotech\Core\Laravel\Utils\Cache;
-use Illuminate\Database\Eloquent\Builder;
+use DateTime;
+use DateTimeZone;
+use DevToolbelt\LaravelEloquentPlus\Concerns\Blamable;
 use Illuminate\Database\Eloquent\Concerns\HasEvents;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Ramsey\Uuid\Uuid;
+use Illuminate\Validation\Rules\Enum as ValidationEnum;
+use ReflectionClass;
 
 /**
- * Base class for new Eloquent models.
- * This class extends the base Model class and provides additional functionalities for models in the application.
- * It includes methods for handling fillable fields, validation, events, and casting.
+ * Abstract base model class that extends Laravel's Eloquent Model.
  *
- * @package App\Models
+ * Provides additional functionality including:
+ * - Automatic validation based on defined rules
+ * - Lifecycle hooks (beforeValidate, beforeSave, afterSave, beforeDelete, afterDelete)
+ * - Automatic type casting inferred from validation rules
+ * - Built-in soft deletes with user tracking (blamable)
+ * - Automatic snake_case attribute conversion on fill
  *
- * @property int $id
- * @property string $external_id
- *
- * @method static Builder activatedAndNotDeleted()
+ * @package DevToolbelt\LaravelEloquentPlus
  */
 abstract class ModelBase extends Model
 {
     use HasFactory;
     use HasEvents;
+    use SoftDeletes;
+    use Blamable;
 
-    public const CREATED_BY = 'created_by';
-    public const UPDATED_BY = 'updated_by';
-    public const DELETED_BY = 'deleted_by';
-    public const DELETED_AT = 'deleted_at';
+    /**
+     * The name of the "created at" column.
+     */
+    public const string CREATED_AT = 'created_at';
 
+    /**
+     * The name of the "updated at" column.
+     */
+    public const string UPDATED_AT = 'updated_at';
+
+    /**
+     * The name of the "deleted at" column.
+     */
+    public const string DELETED_AT = 'deleted_at';
+
+    /**
+     * The name of the "created by" column for audit tracking.
+     */
+    public const string CREATED_BY = 'created_by';
+
+    /**
+     * The name of the "updated by" column for audit tracking.
+     */
+    public const string UPDATED_BY = 'updated_by';
+
+    /**
+     * The name of the "deleted by" column for audit tracking.
+     */
+    public const string DELETED_BY = 'deleted_by';
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = true;
+
+    /**
+     * Indicates whether attributes are snake cased on arrays.
+     *
+     * @var bool
+     */
     public static $snakeAttributes = false;
-    public $timestamps = false;
 
     /**
-     * @var string[]
+     * The "type" of the primary key ID.
+     *
+     * @var string
      */
-    protected $fillable = [];
+    protected $keyType = 'int';
 
     /**
-     * @var string[]
+     * Indicates if the IDs are auto-incrementing.
+     *
+     * @var bool
      */
-    protected $appends = [];
+    public $incrementing = true;
 
+    /**
+     * The validation rules for the model attributes.
+     *
+     * Rules are automatically merged with default rules for common columns
+     * (primary key, timestamps, audit columns) during initialization.
+     *
+     * @var array<string, array<int, mixed>|string>
+     */
     protected array $rules = [];
 
-    protected bool $hasExternalId = true;
-
     /**
-     * Custom validation messages should be implemented within this method.
-     */
-    abstract public function construct(): void;
-
-    /**
-     * Constructs the model.
+     * Initialize the ModelBase trait.
      *
-     * @param array $attributes Optional, default is [].
-     * An array of model attributes.
+     * Called automatically by Laravel's trait initialization mechanism.
+     * Sets up validation rules, automatic casts, and hidden attributes.
+     *
+     * @return void
      */
-    public function __construct(array $attributes = [])
+    protected function initializeModelBase(): void
     {
-        $this->populateFillableFields();
-        $this->populateRulesFields();
-        $this->construct();
-        parent::__construct($attributes);
+        $this->setupRules();
+        $this->setupCasts();
+        $this->setupHidden();
     }
 
-    protected static function boot(): void
+    /**
+     * Boot the model and register lifecycle event callbacks.
+     *
+     * Registers callbacks for creating, created, updating, updated,
+     * deleting, deleted, and saved events to trigger validation
+     * and lifecycle hooks.
+     *
+     * @return void
+     */
+    protected static function booted(): void
     {
-        parent::boot();
+        $beforeSaveCallback = static function (self $model) {
+            $model->beforeValidate();
 
-        $beforeSaveCallback = function (self $model) {
-            $model->construct();
-            $model->populateBlameableAttributes();
-            $model->populateTimestampsColumns();
-            $model->attributes = $model->getAttributes();
-            $model->beforeValidation();
-            $validator = Validator::make($model->attributes, $model->rules);
-
-            if (!$validator->fails()) {
+            if (empty($model->rules)) {
                 $model->beforeSave();
                 return;
             }
 
-            $details = [];
-            $errors = $validator->errors()->toArray();
-            $data = $model->getAttributes();
-            foreach ($errors as $field => $message) {
-                $value = $data[$field] ?? null;
-                $details[] = ['field' => $field, 'error' => $message, 'value' => $value];
+            $attributes = $model->getAttributes();
+            $validator = Validator::make($attributes, $model->rules);
+
+            if ($validator->passes()) {
+                $model->beforeSave();
+                return;
             }
 
-            throw new ValidationException(
-                $details,
-                'Validation error in model "' . $model::class . '": ' . json_encode($details, JSON_PRETTY_PRINT)
-            );
+            $errors = [];
+            $messages = $validator->errors()->toArray();
+
+            foreach ($validator->failed() as $field => $failedRules) {
+                $i = 0;
+                $fieldMessages = $messages[$field] ?? [];
+
+                foreach ($failedRules as $ruleName => $params) {
+                    $errors[] = [
+                        'field' => $field,
+                        'error' => strtolower($ruleName),
+                        'value' => $attributes[$field] ?? null,
+                        'message' => $fieldMessages[$i] ?? null,
+                    ];
+                    $i++;
+                }
+            }
+
+            // throw new ValidationException($details, $message);
         };
 
-        $afterSaveCallback = function (self $model) {
-            $model->attributes = $model->getAttributes();
+        $afterSaveCallback = static function (self $model) {
             $model->afterSave();
         };
 
-        $beforeDeleteCallback = function (self $model) {
-            $blameName = 'anonymous';
-            $now = new DateTimeImmutable();
-
-            if ($model->exists && $model->hasModelAttribute(self::DELETED_BY)) {
-                $model->setAttribute(static::DELETED_BY, $blameName);
-            }
-
-            if ($model->exists && $model->hasModelAttribute('deleted_at')) {
-                $model->{static::DELETED_AT} = $now->format('Y-m-d H:i:s');
-            }
-
+        $beforeDeleteCallback = static function (self $model) {
             $model->beforeDelete();
+        };
+
+        $afterDeleteCallback = static function (self $model) {
+            $model->afterDelete();
         };
 
         self::creating($beforeSaveCallback);
@@ -132,368 +184,241 @@ abstract class ModelBase extends Model
         self::updating($beforeSaveCallback);
         self::updated($afterSaveCallback);
         self::deleting($beforeDeleteCallback);
+        self::deleted($afterDeleteCallback);
         self::saved($afterSaveCallback);
     }
 
-    protected function beforeValidation(): void
+    /**
+     * Set up default validation rules based on model attributes.
+     *
+     * Automatically adds validation rules for common columns if they exist:
+     * - Primary key: nullable integer
+     * - external_id: required UUID string with 36 characters
+     * - Timestamp columns: date validation
+     * - Audit columns (created_by, updated_by, deleted_by): integer with exists rule
+     *
+     * Custom rules defined in the model are merged after default rules,
+     * allowing them to override defaults.
+     *
+     * @return void
+     */
+    private function setupRules(): void
     {
-        foreach ($this->modelAttributes() as $fieldName) {
-            $value = $this->getAttribute($fieldName);
-            if (is_null($value)) {
-                continue;
-            }
+        $usersTable = 'users'; // how to get dynamically ?
+        $defaultRules = [];
 
-            if (isset($this->rules[$fieldName]) && in_array('date', $this->rules[$fieldName])) {
-                continue;
-            }
-
-            $this->setAttribute($fieldName, $value);
+        if ($this->hasAttribute($this->primaryKey)) {
+            $defaultRules[$this->primaryKey] = ['nullable', 'integer'];
         }
 
-        if (!empty($this->getAttribute($this->primaryKey))) {
-            return;
+        if ($this->hasAttribute('external_id')) {
+            $defaultRules['external_id'] = ['required', 'uuid', 'string', 'size:36'];
         }
 
-        if ($this->hasExternalId && !$this->external_id) {
-            $this->external_id = Uuid::uuid7()->toString();
-        }
-    }
-
-    public function getAttribute($key): mixed
-    {
-        $value = parent::getAttribute($key);
-
-        if (isset($this->rules[$key]) && in_array('array', $this->rules[$key]) && is_string($value)) {
-            return json_decode($value, true);
+        if ($this->hasAttribute(self::CREATED_AT)) {
+            $defaultRules[self::CREATED_AT] = ['required', 'date'];
         }
 
-        if (isset($this->rules[$key]) && in_array('date', $this->rules[$key]) && !empty($value)) {
-            if ($value instanceof Carbon) {
-                $value = $value->format('Y-m-d H:i:s');
-            }
-
-            $date = new DateTime($value, new DateTimeZone(config('app.timezone')));
-            $date->setTimezone(new DateTimeZone($this->getUserTimezone()));
-
-            $valueWithMs = $date->format("Y-m-d H:i:s.u");
-            [, $time] = explode(' ', $valueWithMs);
-
-            if ($time === '00:00:00.000000') {
-                return $date->format('Y-m-d');
-            }
-
-            return $date->format('Y-m-d H:i:s');
+        if ($this->hasAttribute(self::CREATED_BY)) {
+            $defaultRules[self::CREATED_BY] = ['required', 'integer', "exists:{$usersTable},id"];
         }
 
-        return parent::getAttribute($key);
-    }
-
-    protected function getUserTimezone(): string
-    {
-        if (!Auth::check()) {
-            return config('app.timezone');
+        if ($this->hasAttribute(self::UPDATED_AT)) {
+            $defaultRules[self::UPDATED_AT] = ['nullable', 'date'];
         }
 
-        /** @var \Astrotech\Core\Laravel\Eloquent\NewModelBase $user */
-        $user = Auth::user();
-
-        if (!empty($user->getAttribute('timezone'))) {
-            return $user->getAttribute('timezone');
+        if ($this->hasAttribute(self::UPDATED_BY)) {
+            $defaultRules[self::UPDATED_BY] = ['nullable', 'integer', "exists:{$usersTable},id"];
         }
 
-        return config('app.timezone');
+        if ($this->hasAttribute(self::DELETED_AT)) {
+            $defaultRules[self::DELETED_AT] = ['nullable', 'date'];
+        }
+
+        if ($this->hasAttribute(self::DELETED_BY)) {
+            $defaultRules[self::DELETED_BY] = ['nullable', 'integer', "exists:{$usersTable},id"];
+        }
+
+        $this->rules = array_unique([...$defaultRules, ...$this->rules]);
     }
 
     /**
-     * Invoked before the saving event of a model.
-     * The instance of NewModelBase model.
+     * Set up automatic type casts based on validation rules.
+     *
+     * Infers the appropriate cast type from validation rules:
+     * - 'boolean' rule -> boolean cast
+     * - 'integer' rule -> integer cast
+     * - 'numeric' rule -> float cast
+     * - 'date' rule -> date cast
+     * - 'array' rule -> array cast
+     * - Enum validation rule -> enum class cast
+     *
+     * Custom casts defined in the model are merged after inferred casts,
+     * allowing them to override automatic casts.
+     *
+     * @return void
+     */
+    private function setupCasts(): void
+    {
+        $defaultCasts = [];
+
+        foreach ($this->rules as $attribute => $rules) {
+            if (!is_array($rules)) {
+                continue;
+            }
+
+            if (in_array('boolean', $rules, true)) {
+                $defaultCasts[$attribute] = 'boolean';
+            }
+
+            if (in_array('integer', $rules, true)) {
+                $defaultCasts[$attribute] = 'integer';
+            }
+
+            if (in_array('numeric', $rules, true)) {
+                $defaultCasts[$attribute] = 'float';
+            }
+
+            if (in_array('date', $rules, true)) {
+                $defaultCasts[$attribute] = 'date';
+            }
+
+            if (in_array('array', $rules, true)) {
+                $defaultCasts[$attribute] = 'array';
+            }
+
+            foreach ($rules as $rule) {
+                if ($rule instanceof ValidationEnum) {
+                    $enumClass = $this->extractEnumCast($rule);
+                    if ($enumClass !== null) {
+                        $defaultCasts[$attribute] = $enumClass;
+                    }
+                }
+            }
+        }
+
+        $this->casts = array_unique([...$defaultCasts, ...$this->casts]);
+    }
+
+    /**
+     * Set up default hidden attributes for serialization.
+     *
+     * Automatically hides soft delete columns (deleted_at and deleted_by)
+     * from array/JSON output. Custom hidden attributes defined in the model
+     * are preserved and merged with these defaults.
+     *
+     * @return void
+     */
+    private function setupHidden(): void
+    {
+        $defaultHidden = [];
+
+        if ($this->hasAttribute(static::DELETED_AT)) {
+            $defaultHidden[] = static::DELETED_AT;
+        }
+
+        if ($this->hasAttribute(static::DELETED_BY)) {
+            $defaultHidden[] = static::DELETED_BY;
+        }
+
+        $this->hidden = array_unique([...$defaultHidden, ...$this->hidden]);
+    }
+
+    /**
+     * Hook executed before validation runs.
+     *
+     * Override this method in child classes to perform actions
+     * before the model is validated (e.g., data normalization).
+     *
+     * @return void
+     */
+    protected function beforeValidate(): void
+    {
+    }
+
+    /**
+     * Hook executed before the model is saved (created or updated).
+     *
+     * Override this method in child classes to perform actions
+     * after validation passes but before the database write.
+     *
+     * @return void
      */
     protected function beforeSave(): void
     {
-        foreach (array_keys($this->getAttributes()) as $attributeName) {
-            if (!is_array($this->{$attributeName})) {
-                continue;
-            }
-
-            $this->{$attributeName} = json_encode($this->{$attributeName});
-        }
     }
 
     /**
-     * Invoked after the saving event of a model.
-     * The instance of NewModelBase model.
+     * Hook executed after the model is saved (created or updated).
+     *
+     * Override this method in child classes to perform actions
+     * after the model has been persisted to the database.
+     *
+     * @return void
      */
     protected function afterSave(): void
     {
-        Cache::put("{$this->getTable()}_{$this->external_id}", $this->getAttributes());
-        Cache::delete("{$this->getTable()}_collection");
-        Cache::delPattern("{$this->getTable()}_options*");
-        Cache::delPattern("{$this->getTable()}_search*");
     }
 
     /**
-     * Invoked before the deleting event of a model.
-     * The instance of NewModelBase model.
+     * Hook executed before the model is deleted.
+     *
+     * Override this method in child classes to perform actions
+     * before the model is removed (e.g., cleanup related data).
+     *
+     * @return void
      */
     protected function beforeDelete(): void
     {
-        Cache::delete("{$this->getTable()}_{$this->external_id}");
-        Cache::delPattern("{$this->getTable()}_options*");
-        Cache::delPattern("{$this->getTable()}_search*");
     }
 
     /**
-     * Overrides the "fill" method of Laravel Eloquent.
+     * Hook executed after the model is deleted.
      *
-     * @param array $attributes
-     * An array of attribute key-value pairs.
+     * Override this method in child classes to perform actions
+     * after the model has been removed from the database.
      *
-     * @return static
-     * @throws RuntimeException
+     * @return void
      */
-    public function fill(array $attributes): static
+    protected function afterDelete(): void
     {
-        parent::fill($attributes);
+    }
 
+    /**
+     * Fill the model with an array of attributes.
+     *
+     * Extends the default fill behavior to automatically convert
+     * camelCase attribute names to snake_case before filling.
+     *
+     * @param array<string, mixed> $attributes Key-value pairs of attributes to fill
+     * @return static
+     */
+    public function fill(array $attributes): self
+    {
         if (empty($attributes)) {
-            return $this;
+            return parent::fill($attributes);
         }
 
         foreach ($attributes as $attributeName => $value) {
             $snakeCaseAttr = Str::snake($attributeName);
 
-            if (!$this->hasModelAttribute($snakeCaseAttr)) {
+            if (!$this->hasAttribute($snakeCaseAttr)) {
                 continue;
             }
 
             $attributes[$snakeCaseAttr] = $value;
-
-            if (isset($this->rules[$snakeCaseAttr])) {
-                $attrRule = $this->rules[$snakeCaseAttr];
-                if (is_array($attrRule) && in_array('boolean', $this->rules[$snakeCaseAttr])) {
-                    $attributes[$snakeCaseAttr] = \Astrotech\Core\Laravel\Eloquent\convertToBool($value);
-                }
-            }
         }
 
         return parent::fill($attributes);
     }
 
     /**
-     * Sets the fillable attributes to a combination of existing attributes and the new ones provided.
+     * Convert the model to a minimal array representation.
      *
-     * @param array $attributes
-     * An array of new attributes to be set for the model.
-     */
-    public function setDefaultAttributesValue(array $attributes): void
-    {
-        $this->fillable = [...$this->attributes, $attributes];
-    }
-
-    /**
-     * Adds new fillable attributes to the existing ones.
+     * Returns only the primary key field, useful for references
+     * or lightweight serialization.
      *
-     * @param array $fillable
-     * An array of new fillable attributes to be added for the model.
-     */
-    public function addFillable(array $fillable): void
-    {
-        $this->fillable = array_merge(['external_id', 'id'], $fillable);
-    }
-
-    /**
-     * Add additional rules to the model.
-     *
-     * @param array $rules
-     * The new rules array to be added.
-     */
-    public function addRules(array $rules): void
-    {
-        if ($this->hasModelAttribute('external_id') && $this->hasExternalId) {
-            $this->rules['external_id'] = ['required', 'string', 'size:36'];
-        }
-
-        if ($this->hasModelAttribute('active')) {
-            $this->rules['active'] = ['nullable', 'boolean'];
-        }
-
-        if ($this->hasModelAttribute('created_at')) {
-            $this->rules['created_at'] = ['required', 'date'];
-        }
-
-        if ($this->hasModelAttribute('updated_at')) {
-            $this->rules['updated_at'] = ['nullable', 'date'];
-        }
-
-        if ($this->hasModelAttribute('deleted_at')) {
-            $this->rules['deleted_at'] = ['nullable', 'date'];
-        }
-
-        if ($this->hasModelAttribute('created_by')) {
-            $this->rules['created_by'] = ['required', 'string', 'max:100'];
-        }
-
-        if ($this->hasModelAttribute('updated_by')) {
-            $this->rules['updated_by'] = ['nullable', 'string', 'max:100'];
-        }
-
-        if ($this->hasModelAttribute('deleted_by')) {
-            $this->rules['deleted_by'] = ['nullable', 'string', 'max:100'];
-        }
-
-        $this->rules = [...$this->rules, ...$rules];
-    }
-
-    /**
-     * Add casting to the model.
-     *
-     * @param array $casts
-     * The new casts array to be added.
-     */
-    public function addCast(array $casts): void
-    {
-        $this->casts[$this->primaryKey] = UuidToIdCast::class . ":{$this->getTable()}";
-
-        if ($this->hasModelAttribute('active')) {
-            $this->casts['active'] = 'boolean';
-        }
-
-        $this->casts = [...$this->casts, ...$casts];
-    }
-
-    /**
-     * Add hidden columns to the model.
-     *
-     * @param array $hidden
-     * The new hidden columns array to be added.
-     */
-    public function addHidden(array $hidden): void
-    {
-        $this->hidden = [...$this->hidden, ...$hidden];
-    }
-
-    /**
-     * Add guarded columns to the model.
-     *
-     * @param array $guarded
-     * The new guarded columns array to be added.
-     */
-    public function addGuarded(array $guarded): void
-    {
-        $this->guarded = [...$this->guarded, ...$guarded];
-    }
-
-    /**
-     * Add appends columns to the model.
-     *
-     * @param array $appendFields
-     * The new appends columns array to be added.
-     */
-    public function addAppends(array $appendFields): void
-    {
-        $this->appends = [...$this->appends, ...$appendFields];
-    }
-
-    /**
-     * Register an event with a given handler.
-     *
-     * @param string $event
-     * The name of the event to register.
-     *
-     * @param string $handler
-     * The name of the handler to trigger when the event is dispatched.
-     * @throws RuntimeException
-     */
-    public function addEvent(string $event, string $handler): void
-    {
-        $available = [
-            'retrieved',
-            'creating',
-            'created',
-            'updating',
-            'updated',
-            'saving',
-            'saved',
-            'deleting',
-            'deleted',
-            'restoring',
-            'restored',
-        ];
-
-        if (!in_array($event, $available, true)) {
-            throw new RuntimeException('Event not available', ['event' => $event]);
-        }
-
-        $this->dispatchesEvents[$event] = $handler;
-    }
-
-    /**
-     * Get the model's attributes.
-     *
-     * @return array
-     * The array containing the model's attributes.
-     */
-    public function modelAttributes(): array
-    {
-        $fillable = $this->fillable;
-        $rules = array_keys($this->rules);
-        $casts = array_keys($this->casts);
-        return array_merge($fillable, $rules, $casts);
-    }
-
-    /**
-     * Check if the model has an attribute.
-     *
-     * @param string $name
-     * The name of the attribute.
-     *
-     * @return bool
-     * Returns `true` if the attribute exists, `false` otherwise.
-     */
-    public function hasModelAttribute(string $name): bool
-    {
-        return in_array($name, $this->modelAttributes());
-    }
-
-    /**
-     * Convert the current instance of the model to an array.
-     *
-     * @return array
-     * The array form of the current instance.
-     */
-    public function toArray(): array
-    {
-        $data = parent::toArray();
-
-        foreach (array_keys($data) as $fieldName) {
-            $data[$fieldName] = $this->getAttribute($fieldName);
-        }
-
-        $data[$this->primaryKey] = $data['external_id'] ?? null;
-        unset($data['external_id'], $data['deleted_at'], $data['deleted_by']);
-
-        foreach ($this->getCasts() as $fieldName => $castName) {
-            if ($fieldName === $this->primaryKey) {
-                continue;
-            }
-
-            [$className,] = explode(':', $castName, 2);
-
-            if ($className !== UuidToIdCast::class) {
-                continue;
-            }
-
-            unset($data[$fieldName]);
-        }
-
-        return $data;
-    }
-
-    /**
-     * Returns summarized data based on the return of the toArray() method
-     *
-     * @return array
-     * Returns an array with the summarized data of the model.
+     * @return array<string, mixed> Array containing only the primary key
      */
     public function toSoftArray(): array
     {
@@ -501,39 +426,10 @@ abstract class ModelBase extends Model
     }
 
     /**
-     * Convert the current entity instance into an array representation.
+     * Filter the model's array representation to include only specified fields.
      *
-     * @return array The entity attributes as an associative array,
-     * with `id` set to the value of `external_id`.
-     */
-    public function toArrayEntity(): array
-    {
-        $attributes = $this->getAttributes();
-        $attributes['id'] = $this->external_id;
-        unset($attributes['external_id']);
-
-        return $attributes;
-    }
-
-    /**
-     * Checks if the model has been softly deleted.
-     *
-     * @return bool
-     * Returns `true` if the model has been softly deleted, `false` otherwise.
-     */
-    public function isDeleted(): bool
-    {
-        return $this->hasModelAttribute('deleted_at') && !empty($this->deleted_at);
-    }
-
-    /**
-     * Return only the fields specified in the parameters based on toArray() return
-     *
-     * @param string[] $fieldsToReturn
-     * An array containing the fields to return.
-     *
-     * @return array
-     * Returns an array containing only the specified fields.
+     * @param string[] $fieldsToReturn List of field names to include in the output
+     * @return array<string, mixed> Filtered array containing only the specified fields
      */
     protected function returnOnlyFields(array $fieldsToReturn): array
     {
@@ -543,177 +439,56 @@ abstract class ModelBase extends Model
     }
 
     /**
-     * Populates the timestamp columns (if they exist) in the model.
-     * Sets the 'CREATED_AT' attribute to the current date and time if the model has not been persisted yet.
-     * It also sets the 'UPDATED_AT' attribute to the current date and time.
+     * Resolve a datetime value to a formatted string.
      *
-     * @return void
-     * @throws DateInvalidTimeZoneException
-     * @throws DateMalformedStringException
+     * Converts Carbon instances or date strings to a consistent format.
+     * Returns 'Y-m-d' format if time is midnight, otherwise 'Y-m-d H:i:s.u'.
+     *
+     * @param Carbon|string $value The datetime value to resolve
+     * @return string The formatted datetime string
+     *
+     * @throws \DateInvalidTimeZoneException If the configured timezone is invalid
+     * @throws \DateMalformedStringException If the date string cannot be parsed
      */
-    protected function populateTimestampsColumns(): void
+    private function resolveDateTime(Carbon|string $value): string
     {
-        $now = new DateTimeImmutable("now", new DateTimeZone(config('app.timezone')));
-
-        if (!$this->exists && $this->hasModelAttribute(static::CREATED_AT)) {
-            $this->{static::CREATED_AT} = $now->format('Y-m-d H:i:s');
+        if ($value instanceof Carbon) {
+            $value = $value->format('Y-m-d H:i:s');
         }
 
-        if ($this->hasModelAttribute(static::UPDATED_AT)) {
-            $this->{static::UPDATED_AT} = $now->format('Y-m-d H:i:s');
+        $dateTime = new DateTime($value, new DateTimeZone(config('app.timezone')));
+        $valueWithMs = $dateTime->format("Y-m-d H:i:s.u");
+        [, $time] = explode(' ', $valueWithMs);
+
+        if ($time === '00:00:00.000000') {
+            return $dateTime->format('Y-m-d');
         }
+
+        return $dateTime->format('Y-m-d H:i:s.u');
     }
 
     /**
-     * Populates the "blameable" model attributes ('CREATED_BY' and 'UPDATED_BY', if they exist) with the current
-     * authenticated user's name and external ID.
-     * If there's no authenticated user, it uses 'anonymous' instead.
+     * Extract the enum class name from a ValidationEnum rule.
      *
-     * @return void
-     */
-    protected function populateBlameableAttributes(): void
-    {
-        /** @var ModelBase $user */
-        $user = Auth::user();
-        $blameName = 'anonymous';
-
-        if ($user) {
-            $blameName = "{$user->getAttribute('name')} [{$user->getAttribute('external_id')}]";
-        }
-
-        if (!$this->exists && $this->hasModelAttribute(self::CREATED_BY)) {
-            $this->setAttribute(static::CREATED_BY, $blameName);
-        }
-
-        if ($this->exists && $this->hasModelAttribute(self::UPDATED_BY)) {
-            $this->setAttribute(static::UPDATED_BY, $blameName);
-        }
-    }
-
-    /**
-     * Adds 'CREATED_AT', 'UPDATED_AT', 'DELETED_AT', 'CREATED_BY', 'UPDATED_BY', 'DELETED_BY' and others fields if
-     * necessary, to the list of fillable attributes, if these attributes exist in the model.
+     * Uses reflection to access the protected type property of the
+     * Illuminate\Validation\Rules\Enum class.
      *
-     * @return void
+     * @param ValidationEnum $rule The enum validation rule instance
+     * @return class-string|null The fully qualified enum class name, or null if not found
      */
-    private function populateFillableFields(): void
+    private function extractEnumCast(ValidationEnum $rule): ?string
     {
-        if ($this->hasModelAttribute(static::CREATED_AT)) {
-            $this->fillable[] = static::CREATED_AT;
+        $reflection = new ReflectionClass($rule);
+
+        foreach ($reflection->getProperties() as $property) {
+            $property->setAccessible(true);
+            $value = $property->getValue($rule);
+
+            if (is_string($value) && enum_exists($value)) {
+                return $value;
+            }
         }
 
-        if ($this->hasModelAttribute(static::CREATED_BY)) {
-            $this->fillable[] = static::CREATED_BY;
-        }
-
-        if ($this->hasModelAttribute(static::UPDATED_AT)) {
-            $this->fillable[] = static::UPDATED_AT;
-        }
-
-        if ($this->hasModelAttribute(static::UPDATED_BY)) {
-            $this->fillable[] = static::UPDATED_BY;
-        }
-
-        if ($this->hasModelAttribute(static::DELETED_AT)) {
-            $this->fillable[] = static::DELETED_AT;
-        }
-
-        if ($this->hasModelAttribute(static::DELETED_BY)) {
-            $this->fillable[] = static::DELETED_BY;
-        }
-    }
-
-    /**
-     * Sets validation rules for 'CREATED_AT', 'CREATED_BY', 'UPDATED_AT', 'UPDATED_BY', 'DELETED_AT', 'DELETED_BY' and
-     * others fields if necessary, attributes if they exist in the model.
-     *
-     * @return void
-     */
-    private function populateRulesFields(): void
-    {
-        if ($this->hasModelAttribute(static::CREATED_AT)) {
-            $this->rules[static::CREATED_AT] = ['required', 'date'];
-        }
-
-        if ($this->hasModelAttribute(static::CREATED_BY)) {
-            $this->rules[static::CREATED_BY] = ['required', 'string'];
-        }
-
-        if ($this->hasModelAttribute(static::UPDATED_AT)) {
-            $this->rules[static::UPDATED_AT] = ['nullable', 'date'];
-        }
-
-        if ($this->hasModelAttribute(static::UPDATED_BY)) {
-            $this->rules[static::UPDATED_BY] = ['nullable', 'string'];
-        }
-
-        if ($this->hasModelAttribute(static::DELETED_AT)) {
-            $this->rules[static::DELETED_AT] = ['nullable', 'date'];
-        }
-
-        if ($this->hasModelAttribute(static::DELETED_BY)) {
-            $this->rules[static::DELETED_BY] = ['nullable', 'string'];
-        }
-    }
-
-    public static function tableName(): string
-    {
-        return Str::snake(Str::pluralStudly(class_basename(static::class)));
-    }
-
-    public static function findByExternalId(string $externalId): ?self
-    {
-        $model = new static();
-        $cacheKey = "{$model->getTable()}_{$externalId}";
-
-        if (Cache::has($cacheKey)) {
-            $model->exists = true;
-            $model->fill(Cache::get($cacheKey));
-            return $model;
-        }
-
-        $query = $model->where('external_id', $externalId);
-
-        if ($model->hasModelAttribute('deleted_at')) {
-            $query->whereNull('deleted_at');
-        }
-
-        if ($model->hasModelAttribute('deleted_by')) {
-            $query->whereNull('deleted_by');
-        }
-
-        $record = $query->first();
-
-        if ($record) {
-            $record->exists = true;
-            Cache::forever($cacheKey, $record->getAttributes());
-        }
-
-        return $record;
-    }
-
-    public static function getIdFromExternalId(string $externalId): ?int
-    {
-        $model = new static();
-        $query = $model
-            ->select($model->primaryKey)
-            ->where('external_id', $externalId);
-
-        if ($model->hasModelAttribute('deleted_at')) {
-            $query->whereNull('deleted_at');
-        }
-
-        if ($model->hasModelAttribute('deleted_by')) {
-            $query->whereNull('deleted_by');
-        }
-
-        return $query->first()?->id;
-    }
-
-    public function scopeActivatedAndNotDeleted(Builder $query): Builder
-    {
-        return $query->where('active', 1)
-            ->whereNull('deleted_at')
-            ->whereNull('deleted_by');
+        return null;
     }
 }
