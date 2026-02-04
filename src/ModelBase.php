@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
  * Abstract base model class that extends Laravel's Eloquent Model.
@@ -32,6 +33,8 @@ use Illuminate\Support\Str;
  * - Automatic snake_case attribute conversion on fill
  *
  * @package DevToolbelt\LaravelEloquentPlus
+ *
+ * @phpstan-consistent-constructor
  */
 abstract class ModelBase extends Model
 {
@@ -117,6 +120,18 @@ abstract class ModelBase extends Model
      * @var bool
      */
     public $incrementing = true;
+
+    protected static function booted(): void
+    {
+        parent::booted();
+
+        /** @phpstan-ignore new.static */
+        $model = new static();
+
+        if ($model->hasAttribute($model->getDeletedAtColumn()) && $model->hasAttribute($model->getDeletedByColumn())) {
+            static::addGlobalScope(new SoftDeletingScope());
+        }
+    }
 
     /**
      * Fill the model with an array of attributes.
