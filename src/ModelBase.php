@@ -121,17 +121,27 @@ abstract class ModelBase extends Model
      */
     public $incrementing = true;
 
-    public static function bootSoftDeletes(): void
+    /**
+     * Boot the soft deleting trait for a model.
+     *
+     * @return void
+     */
+    public static function bootSoftDeletes()
     {
         /** @phpstan-ignore new.static */
         $model = new static();
 
-        if ($model->hasAttribute($model->getDeletedAtColumn()) && $model->hasAttribute($model->getDeletedByColumn())) {
+        if ($model->hasAttribute($model->getDeletedAtColumn())) {
             static::addGlobalScope(new SoftDeletingScope());
         }
     }
 
-    public function initializeSoftDeletes(): void
+    /**
+     * Initialize the soft deleting trait for an instance.
+     *
+     * @return void
+     */
+    public function initializeSoftDeletes()
     {
     }
 

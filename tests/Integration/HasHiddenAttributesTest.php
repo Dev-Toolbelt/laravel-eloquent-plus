@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration;
 
+use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\HiddenAttributesModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\SimpleModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\IntegrationTestCase;
 
@@ -11,8 +12,8 @@ final class HasHiddenAttributesTest extends IntegrationTestCase
 {
     public function testDeletedAtIsHiddenByDefaultWhenAttributeExists(): void
     {
-        $model = new SimpleModel();
-        $model->title = 'Test';
+        $model = new HiddenAttributesModel();
+        $model->name = 'Test';
         $model->save();
 
         // After save, the model has deleted_at attribute
@@ -26,13 +27,13 @@ final class HasHiddenAttributesTest extends IntegrationTestCase
 
     public function testHiddenAttributesNotInToArray(): void
     {
-        $model = new SimpleModel();
-        $model->title = 'Test';
+        $model = new HiddenAttributesModel();
+        $model->name = 'Test';
         $model->save();
 
         $model->delete();
 
-        $array = SimpleModel::withTrashed()->find($model->id)->toArray();
+        $array = HiddenAttributesModel::withTrashed()->find($model->id)->toArray();
 
         $this->assertArrayNotHasKey('deleted_at', $array);
     }
