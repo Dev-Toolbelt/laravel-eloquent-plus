@@ -95,7 +95,13 @@ final readonly class UuidToIdCast implements CastsAttributes
             $message = "The selected '{$key}' is invalid. Record not found in '{$this->relatedTableName}'.";
 
             throw new ValidationException(
-                [['field' => $key, 'error' => 'relationRecordNotFound', 'value' => $value, 'message' => $message]],
+                [[
+                    'field' => $key,
+                    'error' => 'relationRecordNotFound',
+                    'value' => $value,
+                    'table' => $this->relatedTableName,
+                    'message' => $message
+                ]],
                 $message
             );
         }

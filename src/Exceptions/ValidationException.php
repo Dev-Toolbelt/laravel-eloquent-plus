@@ -24,7 +24,13 @@ class ValidationException extends LaravelEloquentPlusException
     /**
      * Create a new ValidationException instance.
      *
-     * @param array<int, array{field: string, error: string, value: mixed, message: string|null}> $errors
+     * @param array<int, array{
+     *     field: string,
+     *     error: string,
+     *     value: mixed,
+     *     table: string|null,
+     *     message: string|null
+     * }> $errors
      * @param string $message
      */
     public function __construct(array $errors, string $message = 'The given data was invalid.')
