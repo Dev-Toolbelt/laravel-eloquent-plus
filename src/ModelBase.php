@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Throwable;
+use TypeError;
 use ValueError;
 
 /**
@@ -168,12 +169,30 @@ abstract class ModelBase extends Model
      * instead of Carbon instances for date/datetime fields.
      * This behavior can be disabled by setting $carbonInstanceInFieldDates to true.
      *
+     * Also catches enum casting errors and converts them to ValidationException.
+     *
      * @param string $key The attribute name
      * @return mixed The attribute value (string for dates when $carbonInstanceInFieldDates is false)
+     *
+     * @throws ValidationException
      */
     public function getAttribute($key): mixed
     {
-        $value = parent::getAttribute($key);
+        try {
+            $value = parent::getAttribute($key);
+        } catch (ValueError $e) {
+            $rawValue = $this->getAttributes()[$key] ?? null;
+            throw new ValidationException(
+                [['field' => $key, 'value' => $rawValue, 'error' => 'valueError', 'message' => $e->getMessage()]],
+                $e->getMessage()
+            );
+        } catch (TypeError $e) {
+            $rawValue = $this->getAttributes()[$key] ?? null;
+            throw new ValidationException(
+                [['field' => $key, 'value' => $rawValue, 'error' => 'typeError', 'message' => $e->getMessage()]],
+                $e->getMessage()
+            );
+        }
 
         if ($value instanceof Carbon && isset($this->dateFormats[$key])) {
             if ($this->carbonInstanceInFieldDates) {
@@ -189,9 +208,13 @@ abstract class ModelBase extends Model
     /**
      * Set a given attribute on the model.
      *
+     * Catches enum casting errors and converts them to ValidationException.
+     *
      * @param string $key
      * @param mixed $value
      * @return mixed
+     *
+     * @throws ValidationException
      * @throws Throwable
      */
     public function setAttribute($key, $value)
@@ -200,7 +223,12 @@ abstract class ModelBase extends Model
             return parent::setAttribute($key, $value);
         } catch (ValueError $e) {
             throw new ValidationException(
-                [['field' => $key, 'value' => $value, 'error' => 'enum', 'message' => $e->getMessage()]],
+                [['field' => $key, 'value' => $value, 'error' => 'valueError', 'message' => $e->getMessage()]],
+                $e->getMessage()
+            );
+        } catch (TypeError $e) {
+            throw new ValidationException(
+                [['field' => $key, 'value' => $value, 'error' => 'typeError', 'message' => $e->getMessage()]],
                 $e->getMessage()
             );
         } catch (Throwable $e) {
