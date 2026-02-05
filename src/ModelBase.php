@@ -12,12 +12,15 @@ use DevToolbelt\LaravelEloquentPlus\Concerns\HasExternalId;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasHiddenAttributes;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasLifecycleHooks;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasValidation;
+use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Throwable;
+use ValueError;
 
 /**
  * Abstract base model class that extends Laravel's Eloquent Model.
@@ -181,6 +184,28 @@ abstract class ModelBase extends Model
         }
 
         return $value;
+    }
+
+    /**
+     * Set a given attribute on the model.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     * @throws Throwable
+     */
+    public function setAttribute($key, $value)
+    {
+        try {
+            return parent::setAttribute($key, $value);
+        } catch (ValueError $e) {
+            throw new ValidationException(
+                [['field' => $key, 'value' => $value, 'error' => 'enum', 'message' => $e->getMessage()]],
+                $e->getMessage()
+            );
+        } catch (Throwable $e) {
+            throw $e;
+        }
     }
 
     /**

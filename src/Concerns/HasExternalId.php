@@ -6,6 +6,7 @@ namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
 use DevToolbelt\LaravelEloquentPlus\Exceptions\ExternalIdNotEnabledException;
 use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 
 /**
@@ -122,6 +123,7 @@ trait HasExternalId
      *
      * @param string $externalId The external ID to search for
      * @return static|null
+     *
      * @throws ExternalIdNotEnabledException
      */
     public static function findByExternalId(string $externalId): ?static
@@ -143,7 +145,9 @@ trait HasExternalId
      *
      * @param string $externalId The external ID to search for
      * @return static
+     *
      * @throws ExternalIdNotEnabledException
+     * @throws ModelNotFoundException<static>
      */
     public static function findByExternalIdOrFail(string $externalId): static
     {

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\OrderModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ProductModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\IntegrationTestCase;
-use Illuminate\Validation\ValidationException;
 
 final class UuidToIdCastTest extends IntegrationTestCase
 {
