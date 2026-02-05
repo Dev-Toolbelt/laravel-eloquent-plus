@@ -50,14 +50,7 @@ trait HasValidation
                 return;
             }
 
-            // Use casted/mutated values for validation instead of raw attributes
-            $rawAttributes = $model->getAttributes();
-            $attributes = [];
-
-            foreach (array_keys($rawAttributes) as $key) {
-                $attributes[$key] = $model->getAttribute($key);
-            }
-
+            $attributes = $model->prepareAttributesForValidation();
             $validator = Validator::make($attributes, $model->rules);
 
             if ($validator->passes()) {
@@ -178,6 +171,35 @@ trait HasValidation
     public function getRules(): array
     {
         return $this->rules;
+    }
+
+    /**
+     * Prepare attributes for validation.
+     *
+     * Uses raw attributes by default to ensure proper validation of types like boolean.
+     * For array fields, decodes JSON strings to arrays since they are stored as JSON internally.
+     *
+     * @return array<string, mixed>
+     */
+    protected function prepareAttributesForValidation(): array
+    {
+        $rawAttributes = $this->getAttributes();
+        $attributes = [];
+
+        foreach ($rawAttributes as $key => $value) {
+            $fieldRules = $this->rules[$key] ?? [];
+
+            // For array rules with JSON string values, decode to array
+            if (is_array($fieldRules) && in_array('array', $fieldRules) && is_string($value)) {
+                $decoded = json_decode($value, true);
+                $attributes[$key] = json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
+                continue;
+            }
+
+            $attributes[$key] = $value;
+        }
+
+        return $attributes;
     }
 
     /**
