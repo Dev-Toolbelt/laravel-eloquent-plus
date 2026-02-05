@@ -50,7 +50,14 @@ trait HasValidation
                 return;
             }
 
-            $attributes = $model->getAttributes();
+            // Use casted/mutated values for validation instead of raw attributes
+            $rawAttributes = $model->getAttributes();
+            $attributes = [];
+
+            foreach (array_keys($rawAttributes) as $key) {
+                $attributes[$key] = $model->getAttribute($key);
+            }
+
             $validator = Validator::make($attributes, $model->rules);
 
             if ($validator->passes()) {
