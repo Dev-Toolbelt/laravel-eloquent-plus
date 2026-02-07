@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use ReflectionClass;
 use ReflectionException;
+use Throwable;
 
 /**
  * Trait for automatic model validation based on defined rules.
@@ -38,7 +39,7 @@ trait HasValidation
      * before creating and updating operations.
      *
      * @return void
-     * @throws ValidationException
+     * @throws ValidationException|Throwable
      */
     protected static function bootHasValidation(): void
     {
@@ -221,15 +222,15 @@ trait HasValidation
         $userModel = config('auth.providers.users.model');
 
         if ($userModel === null || !class_exists($userModel)) {
-            return $tableName = 'users';
+            return 'users';
         }
 
         try {
             $reflection = new ReflectionClass($userModel);
             $property = $reflection->getProperty('table');
 
-            if ($property->hasDefaultValue()) {
-                return $tableName = $property->getDefaultValue();
+            if ($property->hasDefaultValue() && !is_null($property->getDefaultValue())) {
+                return $property->getDefaultValue();
             }
         } catch (ReflectionException) {
         }
@@ -249,6 +250,8 @@ trait HasValidation
      * - updated_by: Set to authenticated user ID if available
      *
      * @return void
+     * @throws ValidationException
+     * @throws Throwable
      */
     protected function autoPopulateFields(): void
     {
