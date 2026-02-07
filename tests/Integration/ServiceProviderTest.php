@@ -190,4 +190,25 @@ final class ServiceProviderTest extends IntegrationTestCase
         $this->assertIsArray($expectedAliases);
         $this->assertNotEmpty($expectedAliases);
     }
+
+    public function testConfigIsRegistered(): void
+    {
+        // The config should be registered with default value
+        $blamableFieldType = config('devToolbelt.eloquent-plus.blamable_field_type');
+
+        $this->assertSame('integer', $blamableFieldType);
+    }
+
+    public function testConfigCanBeOverridden(): void
+    {
+        // Override the config
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'string']);
+
+        $blamableFieldType = config('devToolbelt.eloquent-plus.blamable_field_type');
+
+        $this->assertSame('string', $blamableFieldType);
+
+        // Reset
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+    }
 }

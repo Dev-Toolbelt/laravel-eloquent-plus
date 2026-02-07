@@ -162,7 +162,7 @@ trait HasValidation
     private function buildForeignKeyRules(string $table, bool $required = true): array
     {
         $requiredRule = $required ? 'required' : 'nullable';
-        $fieldType = config('eloquent-plus.blamable_field_type', 'integer');
+        $fieldType = config('devToolbelt.eloquent-plus.blamable_field_type', 'integer');
 
         if ($fieldType === 'string') {
             return [$requiredRule, 'string'];

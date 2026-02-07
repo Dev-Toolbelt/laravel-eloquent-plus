@@ -403,6 +403,43 @@ $event->starts_at; // Carbon instance (when $carbonInstanceInFieldDates = true)
 
 ## Configuration
 
+### Publishing Configuration
+
+You can publish the configuration file to customize package behavior:
+
+```bash
+php artisan vendor:publish --tag=eloquent-plus-config
+```
+
+This will create `config/devToolbelt/eloquent-plus.php` in your application.
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `blamable_field_type` | `'integer'` | Type of blamable fields (`created_by`, `updated_by`, `deleted_by`) |
+
+#### Blamable Field Type
+
+By default, blamable fields (`created_by`, `updated_by`, `deleted_by`) are validated as integers with an `exists` rule to ensure the user ID exists in the database.
+
+If your application uses string-based user identifiers (like UUIDs stored as strings), you can change this:
+
+```php
+// config/devToolbelt/eloquent-plus.php
+return [
+    'blamable_field_type' => 'string', // Use 'string' for UUID or other string identifiers
+];
+```
+
+**When set to `'integer'` (default):**
+- Validation rules: `['nullable', 'integer', 'exists:users,id']`
+- Ensures the user ID exists in the users table
+
+**When set to `'string'`:**
+- Validation rules: `['nullable', 'string']`
+- No existence check (useful for external user systems or UUIDs)
+
 ### ModelBase Constants
 
 | Constant | Default | Description |

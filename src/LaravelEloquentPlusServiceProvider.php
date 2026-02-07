@@ -40,8 +40,8 @@ class LaravelEloquentPlusServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../config/devToolbelt/eloquent-plus.php',
-            'eloquent-plus'
+            __DIR__ . '/../config/eloquent-plus.php',
+            'devToolbelt.eloquent-plus'
         );
     }
 
@@ -51,7 +51,7 @@ class LaravelEloquentPlusServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishes([
-            __DIR__ . '/../config/devToolbelt/eloquent-plus.php' => config_path('eloquent-plus.php'),
+            __DIR__ . '/../config/eloquent-plus.php' => config_path('devToolbelt/eloquent-plus.php'),
         ], 'eloquent-plus-config');
 
         $this->registerValidationRules();

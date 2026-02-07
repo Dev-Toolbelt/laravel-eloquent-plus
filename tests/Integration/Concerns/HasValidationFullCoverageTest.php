@@ -89,6 +89,82 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $this->assertContains('integer', $rules['deleted_by']);
     }
 
+    public function testBuildForeignKeyRulesUsesIntegerByDefault(): void
+    {
+        // Ensure config is set to default (integer)
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+
+        $model = new FullAttributesModel();
+        $rules = $model->getRules();
+
+        // Should use integer with exists rule
+        $this->assertArrayHasKey('created_by', $rules);
+        $this->assertContains('integer', $rules['created_by']);
+
+        // Check that exists rule is present
+        $hasExistsRule = false;
+        foreach ($rules['created_by'] as $rule) {
+            if (is_string($rule) && str_starts_with($rule, 'exists:')) {
+                $hasExistsRule = true;
+                break;
+            }
+        }
+        $this->assertTrue($hasExistsRule, 'Expected exists rule for integer blamable field type');
+    }
+
+    public function testBuildForeignKeyRulesUsesStringWhenConfigured(): void
+    {
+        // Set config to string
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'string']);
+
+        // Need to create a new model instance to pick up the config change
+        $model = new FullAttributesModel();
+
+        // Force re-initialization of rules by using reflection
+        $reflection = new \ReflectionMethod($model, 'buildForeignKeyRules');
+        $reflection->setAccessible(true);
+
+        $rules = $reflection->invoke($model, 'users', false);
+
+        // Should use string without exists rule
+        $this->assertContains('nullable', $rules);
+        $this->assertContains('string', $rules);
+        $this->assertNotContains('integer', $rules);
+
+        // Check that exists rule is NOT present
+        $hasExistsRule = false;
+        foreach ($rules as $rule) {
+            if (is_string($rule) && str_starts_with($rule, 'exists:')) {
+                $hasExistsRule = true;
+                break;
+            }
+        }
+        $this->assertFalse($hasExistsRule, 'Expected no exists rule for string blamable field type');
+
+        // Reset config
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+    }
+
+    public function testBuildForeignKeyRulesDefaultsToIntegerWhenConfigNotSet(): void
+    {
+        // Clear the config
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => null]);
+
+        $model = new FullAttributesModel();
+
+        $reflection = new \ReflectionMethod($model, 'buildForeignKeyRules');
+        $reflection->setAccessible(true);
+
+        $rules = $reflection->invoke($model, 'users', true);
+
+        // Should default to integer
+        $this->assertContains('required', $rules);
+        $this->assertContains('integer', $rules);
+
+        // Reset config
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+    }
+
     public function testGetUsersTableReturnsConfiguredUserModelTable(): void
     {
         $model = new FullAttributesModel();
