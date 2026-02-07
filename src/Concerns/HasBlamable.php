@@ -150,11 +150,33 @@ trait HasBlamable
     /**
      * Get the authenticated user's identifier for audit tracking.
      *
+     * When blamable_field_type is 'string':
+     * - If blamable_field_value callable is set, it will be used to get the value
+     * - Otherwise, the user ID will be cast to string
+     *
      * @return int|string|null The user ID, or null if not authenticated
      */
     protected function getBlamableUserId(): int|string|null
     {
-        return auth()->user()?->getAuthIdentifier();
+        $user = auth()->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $fieldType = config('devToolbelt.eloquent-plus.blamable_field_type', 'integer');
+
+        if ($fieldType === 'string') {
+            $fieldValueCallable = config('devToolbelt.eloquent-plus.blamable_field_value');
+
+            if (is_callable($fieldValueCallable)) {
+                return $fieldValueCallable($user);
+            }
+
+            return (string) $user->getAuthIdentifier();
+        }
+
+        return $user->getAuthIdentifier();
     }
 
     /**

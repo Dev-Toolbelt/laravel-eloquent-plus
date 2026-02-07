@@ -49,6 +49,68 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $this->assertSame($this->user->id, $reflection->invoke($model));
     }
 
+    public function testGetBlamableUserIdReturnsStringWhenConfiguredAsString(): void
+    {
+        Auth::login($this->user);
+
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'string']);
+
+        $model = new TestModel();
+
+        $reflection = new \ReflectionMethod($model, 'getBlamableUserId');
+        $reflection->setAccessible(true);
+
+        $result = $reflection->invoke($model);
+
+        $this->assertIsString($result);
+        $this->assertSame((string) $this->user->id, $result);
+
+        // Reset config
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+    }
+
+    public function testGetBlamableUserIdUsesCallableWhenConfigured(): void
+    {
+        Auth::login($this->user);
+
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'string']);
+        config(['devToolbelt.eloquent-plus.blamable_field_value' => fn ($user) => 'custom-' . $user->id]);
+
+        $model = new TestModel();
+
+        $reflection = new \ReflectionMethod($model, 'getBlamableUserId');
+        $reflection->setAccessible(true);
+
+        $result = $reflection->invoke($model);
+
+        $this->assertSame('custom-' . $this->user->id, $result);
+
+        // Reset config
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+        config(['devToolbelt.eloquent-plus.blamable_field_value' => null]);
+    }
+
+    public function testGetBlamableUserIdIgnoresCallableWhenTypeIsInteger(): void
+    {
+        Auth::login($this->user);
+
+        config(['devToolbelt.eloquent-plus.blamable_field_type' => 'integer']);
+        config(['devToolbelt.eloquent-plus.blamable_field_value' => fn ($user) => 'should-not-be-used']);
+
+        $model = new TestModel();
+
+        $reflection = new \ReflectionMethod($model, 'getBlamableUserId');
+        $reflection->setAccessible(true);
+
+        $result = $reflection->invoke($model);
+
+        // Should return the integer ID, not the callable result
+        $this->assertSame($this->user->id, $result);
+
+        // Reset config
+        config(['devToolbelt.eloquent-plus.blamable_field_value' => null]);
+    }
+
     public function testGetCreatedByColumnReturnsColumnName(): void
     {
         $model = new TestModel();

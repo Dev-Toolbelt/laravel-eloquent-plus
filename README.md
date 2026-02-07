@@ -418,6 +418,7 @@ This will create `config/devToolbelt/eloquent-plus.php` in your application.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `blamable_field_type` | `'integer'` | Type of blamable fields (`created_by`, `updated_by`, `deleted_by`) |
+| `blamable_field_value` | `null` | Callable to customize user identifier extraction (only for `string` type) |
 
 #### Blamable Field Type
 
@@ -438,7 +439,40 @@ return [
 
 **When set to `'string'`:**
 - Validation rules: `['nullable', 'string']`
+- User ID is cast to string automatically
 - No existence check (useful for external user systems or UUIDs)
+
+#### Blamable Field Value (Custom User Identifier)
+
+When using `'string'` type, you can customize how the user identifier is retrieved using a callable:
+
+```php
+// config/devToolbelt/eloquent-plus.php
+return [
+    'blamable_field_type' => 'string',
+
+    // Use external_id instead of the default user ID
+    'blamable_field_value' => fn($user) => $user->external_id,
+];
+```
+
+This is useful when:
+- Your users have UUID-based external IDs
+- You need to store a different identifier than the primary key
+- You're integrating with external authentication systems
+
+**Examples:**
+
+```php
+// Use external UUID
+'blamable_field_value' => fn($user) => $user->external_id,
+
+// Use email as identifier
+'blamable_field_value' => fn($user) => $user->email,
+
+// Use a formatted string
+'blamable_field_value' => fn($user) => "user:{$user->id}",
+```
 
 ### ModelBase Constants
 
