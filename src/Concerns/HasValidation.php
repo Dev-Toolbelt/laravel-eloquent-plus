@@ -151,8 +151,9 @@ trait HasValidation
     /**
      * Build validation rules for a foreign key field.
      *
-     * When external ID is enabled, validates as UUID with exists check on external_id column.
-     * When disabled, validates as integer with exists check on primary key column.
+     * The field type is determined by the 'eloquent-plus.blamable_field_type' config:
+     * - 'integer' (default): validates as integer with exists check
+     * - 'string': validates as string without exists check
      *
      * @param string $table The related table name
      * @param bool $required Whether the field is required
@@ -161,6 +162,12 @@ trait HasValidation
     private function buildForeignKeyRules(string $table, bool $required = true): array
     {
         $requiredRule = $required ? 'required' : 'nullable';
+        $fieldType = config('eloquent-plus.blamable_field_type', 'integer');
+
+        if ($fieldType === 'string') {
+            return [$requiredRule, 'string'];
+        }
+
         return [$requiredRule, 'integer', "exists:{$table},{$this->primaryKey}"];
     }
 

@@ -28,7 +28,6 @@ class ValidationException extends LaravelEloquentPlusException
      *     field: string,
      *     error: string,
      *     value: mixed,
-     *     table: string|null,
      *     message: string|null
      * }> $errors
      * @param string $message
