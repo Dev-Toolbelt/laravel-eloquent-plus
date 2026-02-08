@@ -37,11 +37,12 @@ trait HasHiddenAttributes
     {
         $defaultHidden = [];
 
-        if ($this->hasAttribute(static::DELETED_AT)) {
+        // Always hide soft delete columns since SoftDeletes trait is used
+        if (defined('static::DELETED_AT')) {
             $defaultHidden[] = static::DELETED_AT;
         }
 
-        if ($this->hasAttribute(static::DELETED_BY)) {
+        if (defined('static::DELETED_BY')) {
             $defaultHidden[] = static::DELETED_BY;
         }
 

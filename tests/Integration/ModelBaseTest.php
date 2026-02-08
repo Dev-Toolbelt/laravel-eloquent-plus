@@ -146,4 +146,49 @@ final class ModelBaseTest extends IntegrationTestCase
         $this->assertSoftDeleted('simple_models', ['id' => $model->id]);
         $this->assertNotNull($model->deleted_at);
     }
+
+    public function testToArrayExcludesHiddenAttributes(): void
+    {
+        $model = new TestModel();
+        $model->name = 'Test';
+        $model->email = 'test@example.com';
+        $model->save();
+
+        // TestModel has deleted_at and deleted_by as hidden by default (from HasHiddenAttributes)
+        $array = $model->toArray();
+
+        $this->assertArrayNotHasKey('deleted_at', $array);
+        $this->assertArrayNotHasKey('deleted_by', $array);
+    }
+
+    public function testToArrayExcludesCustomHiddenAttributes(): void
+    {
+        $model = new TestModel();
+        $model->name = 'Test';
+        $model->email = 'secret@example.com';
+        $model->save();
+
+        // Add custom hidden attribute
+        $model->makeHidden(['email']);
+
+        $array = $model->toArray();
+
+        $this->assertArrayNotHasKey('email', $array);
+        $this->assertArrayHasKey('name', $array);
+    }
+
+    public function testToArrayExcludesHiddenAttributesAfterSoftDelete(): void
+    {
+        $model = new TestModel();
+        $model->name = 'Test';
+        $model->save();
+
+        $model->delete();
+
+        // Even after soft delete, deleted_at and deleted_by should be hidden
+        $array = $model->toArray();
+
+        $this->assertArrayNotHasKey('deleted_at', $array);
+        $this->assertArrayNotHasKey('deleted_by', $array);
+    }
 }
