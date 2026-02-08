@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
 use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
+use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use DevToolbelt\LaravelEloquentPlus\ModelBase;
+use Throwable;
 
 /**
  * Trait for automatic user audit tracking on Eloquent models.
@@ -53,6 +55,8 @@ trait HasBlamable
      *
      * @return void
      * @throws MissingModelPropertyException
+     * @throws ValidationException
+     * @throws Throwable
      */
     protected static function bootHasBlamable(): void
     {
@@ -236,5 +240,53 @@ trait HasBlamable
     public function usesBlamable(): bool
     {
         return $this->usesBlamable;
+    }
+
+    /**
+     * Perform the actual soft delete query on the database.
+     *
+     * Overrides Laravel's runSoftDelete to include blamable columns
+     * (deleted_by, updated_by) in the soft delete query.
+     *
+     * @return void
+     */
+    protected function runSoftDelete()
+    {
+        /** @phpstan-ignore argument.type */
+        $query = $this->setKeysForSaveQuery($this->newModelQuery());
+
+        $time = $this->freshTimestamp();
+
+        $columns = [$this->getDeletedAtColumn() => $this->fromDateTime($time)];
+
+        $this->{$this->getDeletedAtColumn()} = $time;
+
+        if ($this->usesTimestamps() && !is_null($this->getUpdatedAtColumn())) {
+            $this->{$this->getUpdatedAtColumn()} = $time;
+
+            $columns[$this->getUpdatedAtColumn()] = $this->fromDateTime($time);
+        }
+
+        // Include blamable columns if blamable is enabled
+        if ($this->usesBlamable()) {
+            $userId = $this->getBlamableUserId();
+
+            if ($userId !== null) {
+                if ($this->hasAttribute($this->getDeletedByColumn())) {
+                    $columns[$this->getDeletedByColumn()] = $userId;
+                    $this->{$this->getDeletedByColumn()} = $userId;
+                }
+
+                if ($this->hasAttribute($this->getUpdatedByColumn())) {
+                    $columns[$this->getUpdatedByColumn()] = $userId;
+                    $this->{$this->getUpdatedByColumn()} = $userId;
+                }
+            }
+        }
+
+        $query->update($columns);
+
+        /** @phpstan-ignore method.notFound */
+        $this->syncOriginalAttributes(array_keys($columns));
     }
 }

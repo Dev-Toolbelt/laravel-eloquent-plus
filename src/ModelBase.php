@@ -44,7 +44,9 @@ abstract class ModelBase extends Model
 {
     use HasFactory;
     use SoftDeletes;
-    use HasBlamable;
+    use HasBlamable {
+        HasBlamable::runSoftDelete insteadof SoftDeletes;
+    }
     use HasCastAliases;
     use HasExternalId;
     use HasValidation;

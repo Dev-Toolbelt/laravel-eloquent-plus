@@ -268,6 +268,26 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         $this->assertSame($this->user->id, $model->updated_by);
     }
 
+    public function testDeletingEventPersistsDeletedByAndUpdatedByToDatabase(): void
+    {
+        Auth::login($this->user);
+
+        $model = new TestModel();
+        $model->name = 'Test for database persistence';
+        $model->save();
+
+        $modelId = $model->id;
+
+        $model->delete();
+
+        // Verify the values are persisted to the database, not just in memory
+        $this->assertDatabaseHas('test_models', [
+            'id' => $modelId,
+            'deleted_by' => $this->user->id,
+            'updated_by' => $this->user->id,
+        ]);
+    }
+
     public function testRestoringEventClearsDeletedByAndSetsUpdatedBy(): void
     {
         Auth::login($this->user);

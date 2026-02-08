@@ -15,7 +15,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class BlamableWithoutConstantsModel extends Model
 {
     use HasBlamable;
-    use SoftDeletes;
+    use SoftDeletes {
+        HasBlamable::runSoftDelete insteadof SoftDeletes;
+    }
 
     protected $table = 'simple_models';
 
