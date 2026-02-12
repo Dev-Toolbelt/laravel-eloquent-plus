@@ -239,6 +239,36 @@ abstract class ModelBase extends Model
     }
 
     /**
+     * Update the creation and update timestamps.
+     *
+     * Overrides HasTimestamps to add hasAttribute checks,
+     * skipping timestamp columns that don't exist on the model.
+     *
+     * @return $this
+     */
+    public function updateTimestamps()
+    {
+        $time = $this->freshTimestamp();
+        $updatedAtColumn = $this->getUpdatedAtColumn();
+        $createdAtColumn = $this->getCreatedAtColumn();
+
+        if (
+            !$this->exists
+            && !is_null($createdAtColumn)
+            && $this->hasAttribute($createdAtColumn)
+            && !$this->isDirty($createdAtColumn)
+        ) {
+            $this->setCreatedAt($time);
+        }
+
+        if (!is_null($updatedAtColumn) && $this->hasAttribute($updatedAtColumn) && !$this->isDirty($updatedAtColumn)) {
+            $this->setUpdatedAt($time);
+        }
+
+        return $this;
+    }
+
+    /**
      * Determine whether an attribute exists on the model.
      *
      * @param string $key
