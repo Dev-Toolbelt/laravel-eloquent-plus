@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
-use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use DevToolbelt\LaravelEloquentPlus\ModelBase;
 use Throwable;
@@ -54,7 +53,6 @@ trait HasBlamable
      * on creating, updating, deleting, and restoring events.
      *
      * @return void
-     * @throws MissingModelPropertyException
      * @throws ValidationException
      * @throws Throwable
      */
@@ -65,25 +63,20 @@ trait HasBlamable
                 return;
             }
 
-            if (!$model->hasAttribute($model->getCreatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getCreatedByColumn());
-            }
-
-            if (!$model->hasAttribute($model->getUpdatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
-            }
-
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
-            if (!$model->getAttribute($model->getCreatedByColumn())) {
-                $model->setAttribute($model->getCreatedByColumn(), $userId);
+            $createdByColumn = $model->getCreatedByColumn();
+            $updatedByColumn = $model->getUpdatedByColumn();
+
+            if ($model->hasAttribute($createdByColumn) && !$model->getAttribute($createdByColumn)) {
+                $model->setAttribute($createdByColumn, $userId);
             }
 
-            if (!$model->getAttribute($model->getUpdatedByColumn())) {
-                $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            if ($model->hasAttribute($updatedByColumn) && !$model->getAttribute($updatedByColumn)) {
+                $model->setAttribute($updatedByColumn, $userId);
             }
         });
 
@@ -92,16 +85,14 @@ trait HasBlamable
                 return;
             }
 
-            if (!$model->hasAttribute($model->getUpdatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
-            }
-
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
-            $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            if ($model->hasAttribute($model->getUpdatedByColumn())) {
+                $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            }
         });
 
         static::deleting(static function (ModelBase $model): void {
@@ -115,16 +106,13 @@ trait HasBlamable
             }
 
             if ($model->usesSoftDeletes() && !$model->isForceDeleting()) {
-                if (!$model->hasAttribute($model->getDeletedByColumn())) {
-                    throw new MissingModelPropertyException($model::class, $model->getDeletedByColumn());
+                if ($model->hasAttribute($model->getDeletedByColumn())) {
+                    $model->setAttribute($model->getDeletedByColumn(), $userId);
                 }
 
-                if (!$model->hasAttribute($model->getUpdatedByColumn())) {
-                    throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
+                if ($model->hasAttribute($model->getUpdatedByColumn())) {
+                    $model->setAttribute($model->getUpdatedByColumn(), $userId);
                 }
-
-                $model->setAttribute($model->getDeletedByColumn(), $userId);
-                $model->setAttribute($model->getUpdatedByColumn(), $userId);
             }
         });
 
@@ -133,21 +121,18 @@ trait HasBlamable
                 return;
             }
 
-            if (!$model->hasAttribute($model->getDeletedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getDeletedByColumn());
-            }
-
-            if (!$model->hasAttribute($model->getUpdatedByColumn())) {
-                throw new MissingModelPropertyException($model::class, $model->getUpdatedByColumn());
-            }
-
             $userId = $model->getBlamableUserId();
             if ($userId === null) {
                 return;
             }
 
-            $model->setAttribute($model->getDeletedByColumn(), null);
-            $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            if ($model->hasAttribute($model->getDeletedByColumn())) {
+                $model->setAttribute($model->getDeletedByColumn(), null);
+            }
+
+            if ($model->hasAttribute($model->getUpdatedByColumn())) {
+                $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            }
         });
     }
 

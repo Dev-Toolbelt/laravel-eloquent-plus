@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\BlamableWithoutColumnsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\BlamableWithoutConstantsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ForceDeleteModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestModel;
@@ -418,5 +419,74 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
 
         // The constant is now defined in the trait, so it should return the value
         $this->assertSame('deleted_by', $model->testGetDeletedByColumn());
+    }
+
+    public function testCreatingSkipsBlamableColumnsWhenNotInTable(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+
+        $this->assertDatabaseHas('simple_models', [
+            'id' => $model->id,
+            'title' => 'Test',
+        ]);
+    }
+
+    public function testUpdatingSkipsBlamableColumnsWhenNotInTable(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+
+        $model->title = 'Updated';
+        $model->save();
+
+        $this->assertDatabaseHas('simple_models', [
+            'id' => $model->id,
+            'title' => 'Updated',
+        ]);
+    }
+
+    public function testDeletingSkipsBlamableColumnsWhenNotInTable(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+
+        $modelId = $model->id;
+
+        $model->delete();
+
+        $this->assertSoftDeleted('simple_models', [
+            'id' => $modelId,
+        ]);
+    }
+
+    public function testRestoringSkipsBlamableColumnsWhenNotInTable(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+
+        $modelId = $model->id;
+
+        $model->delete();
+        $model->restore();
+
+        $this->assertDatabaseHas('simple_models', [
+            'id' => $modelId,
+            'title' => 'Test',
+        ]);
+
+        $this->assertNull($model->deleted_at);
     }
 }
