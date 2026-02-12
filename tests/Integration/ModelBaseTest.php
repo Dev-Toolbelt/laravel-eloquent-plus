@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ExternalIdModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\SimpleModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestModel;
@@ -190,5 +191,42 @@ final class ModelBaseTest extends IntegrationTestCase
 
         $this->assertArrayNotHasKey('deleted_at', $array);
         $this->assertArrayNotHasKey('deleted_by', $array);
+    }
+
+    public function testUpdateTimestampsThrowsExceptionInStrictModeForCreatedAt(): void
+    {
+        config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => true]);
+
+        $this->expectException(MissingModelPropertyException::class);
+
+        // Fresh model has no attributes, so hasAttribute('created_at') returns false
+        $model = new SimpleModel();
+        $model->updateTimestamps();
+    }
+
+    public function testUpdateTimestampsThrowsExceptionInStrictModeForUpdatedAt(): void
+    {
+        config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => true]);
+
+        $this->expectException(MissingModelPropertyException::class);
+
+        // Simulate an existing model to skip created_at check
+        $model = new SimpleModel();
+        $model->exists = true;
+        $model->updateTimestamps();
+    }
+
+    public function testUpdateTimestampsSilentlySkipsWhenStrictModeDisabled(): void
+    {
+        config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => false]);
+
+        // Fresh model has no attributes, so hasAttribute('created_at') returns false
+        // With strict mode disabled, it should silently skip without throwing
+        $model = new SimpleModel();
+        $model->updateTimestamps();
+
+        // Timestamps should not have been set since hasAttribute returned false
+        $this->assertArrayNotHasKey('created_at', $model->getAttributes());
+        $this->assertArrayNotHasKey('updated_at', $model->getAttributes());
     }
 }

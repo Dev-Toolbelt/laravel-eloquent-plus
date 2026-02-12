@@ -277,7 +277,9 @@ trait HasValidation
         // Autopopulate created_by if not set, model is new, blamable enabled, and column exists
         if ($this->usesBlamable()) {
             $createdByColumn = $this->getCreatedByColumn();
-            if ($this->hasAttribute($createdByColumn) && !$this->exists && empty($this->getAttribute($createdByColumn))) {
+            $isCreatedByEmpty = empty($this->getAttribute($createdByColumn));
+
+            if ($this->hasAttribute($createdByColumn) && !$this->exists && $isCreatedByEmpty) {
                 $userId = $this->getBlamableUserId();
                 if ($userId !== null) {
                     $this->setAttribute($createdByColumn, $userId);

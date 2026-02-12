@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use DevToolbelt\LaravelEloquentPlus\ModelBase;
 use Throwable;
@@ -70,12 +71,21 @@ trait HasBlamable
 
             $createdByColumn = $model->getCreatedByColumn();
             $updatedByColumn = $model->getUpdatedByColumn();
+            $strictMode = config('devToolbelt.eloquent-plus.blamable_strict_mode', false);
 
-            if ($model->hasAttribute($createdByColumn) && !$model->getAttribute($createdByColumn)) {
+            if (!$model->hasAttribute($createdByColumn)) {
+                if ($strictMode) {
+                    throw new MissingModelPropertyException($model::class, $createdByColumn);
+                }
+            } elseif (!$model->getAttribute($createdByColumn)) {
                 $model->setAttribute($createdByColumn, $userId);
             }
 
-            if ($model->hasAttribute($updatedByColumn) && !$model->getAttribute($updatedByColumn)) {
+            if (!$model->hasAttribute($updatedByColumn)) {
+                if ($strictMode) {
+                    throw new MissingModelPropertyException($model::class, $updatedByColumn);
+                }
+            } elseif (!$model->getAttribute($updatedByColumn)) {
                 $model->setAttribute($updatedByColumn, $userId);
             }
         });
@@ -90,8 +100,14 @@ trait HasBlamable
                 return;
             }
 
-            if ($model->hasAttribute($model->getUpdatedByColumn())) {
-                $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            $updatedByColumn = $model->getUpdatedByColumn();
+
+            if (!$model->hasAttribute($updatedByColumn)) {
+                if (config('devToolbelt.eloquent-plus.blamable_strict_mode', false)) {
+                    throw new MissingModelPropertyException($model::class, $updatedByColumn);
+                }
+            } else {
+                $model->setAttribute($updatedByColumn, $userId);
             }
         });
 
@@ -106,12 +122,24 @@ trait HasBlamable
             }
 
             if ($model->usesSoftDeletes() && !$model->isForceDeleting()) {
-                if ($model->hasAttribute($model->getDeletedByColumn())) {
-                    $model->setAttribute($model->getDeletedByColumn(), $userId);
+                $deletedByColumn = $model->getDeletedByColumn();
+                $updatedByColumn = $model->getUpdatedByColumn();
+                $strictMode = config('devToolbelt.eloquent-plus.blamable_strict_mode', false);
+
+                if (!$model->hasAttribute($deletedByColumn)) {
+                    if ($strictMode) {
+                        throw new MissingModelPropertyException($model::class, $deletedByColumn);
+                    }
+                } else {
+                    $model->setAttribute($deletedByColumn, $userId);
                 }
 
-                if ($model->hasAttribute($model->getUpdatedByColumn())) {
-                    $model->setAttribute($model->getUpdatedByColumn(), $userId);
+                if (!$model->hasAttribute($updatedByColumn)) {
+                    if ($strictMode) {
+                        throw new MissingModelPropertyException($model::class, $updatedByColumn);
+                    }
+                } else {
+                    $model->setAttribute($updatedByColumn, $userId);
                 }
             }
         });
@@ -126,12 +154,24 @@ trait HasBlamable
                 return;
             }
 
-            if ($model->hasAttribute($model->getDeletedByColumn())) {
-                $model->setAttribute($model->getDeletedByColumn(), null);
+            $deletedByColumn = $model->getDeletedByColumn();
+            $updatedByColumn = $model->getUpdatedByColumn();
+            $strictMode = config('devToolbelt.eloquent-plus.blamable_strict_mode', false);
+
+            if (!$model->hasAttribute($deletedByColumn)) {
+                if ($strictMode) {
+                    throw new MissingModelPropertyException($model::class, $deletedByColumn);
+                }
+            } else {
+                $model->setAttribute($deletedByColumn, null);
             }
 
-            if ($model->hasAttribute($model->getUpdatedByColumn())) {
-                $model->setAttribute($model->getUpdatedByColumn(), $userId);
+            if (!$model->hasAttribute($updatedByColumn)) {
+                if ($strictMode) {
+                    throw new MissingModelPropertyException($model::class, $updatedByColumn);
+                }
+            } else {
+                $model->setAttribute($updatedByColumn, $userId);
             }
         });
     }
@@ -234,6 +274,7 @@ trait HasBlamable
      * (deleted_by, updated_by) in the soft delete query.
      *
      * @return void
+     * @throws MissingModelPropertyException
      */
     protected function runSoftDelete()
     {
@@ -257,14 +298,26 @@ trait HasBlamable
             $userId = $this->getBlamableUserId();
 
             if ($userId !== null) {
-                if ($this->hasAttribute($this->getDeletedByColumn())) {
-                    $columns[$this->getDeletedByColumn()] = $userId;
-                    $this->{$this->getDeletedByColumn()} = $userId;
+                $deletedByColumn = $this->getDeletedByColumn();
+                $updatedByColumn = $this->getUpdatedByColumn();
+                $strictMode = config('devToolbelt.eloquent-plus.blamable_strict_mode', false);
+
+                if (!$this->hasAttribute($deletedByColumn)) {
+                    if ($strictMode) {
+                        throw new MissingModelPropertyException(static::class, $deletedByColumn);
+                    }
+                } else {
+                    $columns[$deletedByColumn] = $userId;
+                    $this->{$deletedByColumn} = $userId;
                 }
 
-                if ($this->hasAttribute($this->getUpdatedByColumn())) {
-                    $columns[$this->getUpdatedByColumn()] = $userId;
-                    $this->{$this->getUpdatedByColumn()} = $userId;
+                if (!$this->hasAttribute($updatedByColumn)) {
+                    if ($strictMode) {
+                        throw new MissingModelPropertyException(static::class, $updatedByColumn);
+                    }
+                } else {
+                    $columns[$updatedByColumn] = $userId;
+                    $this->{$updatedByColumn} = $userId;
                 }
             }
         }
