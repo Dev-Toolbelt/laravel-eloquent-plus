@@ -155,11 +155,14 @@ try {
 
 ## Audit Trail (Blamable)
 
-Track who performed actions on your records:
+Track who performed actions on your records. Blamable is **disabled by default** and must be explicitly enabled per model:
 
 ```php
 class Post extends ModelBase
 {
+    // Enable blamable audit tracking
+    protected bool $usesBlamable = true;
+
     // These columns are automatically populated:
     // - created_by: Set on create (authenticated user ID)
     // - updated_by: Set on create and update
@@ -182,6 +185,24 @@ Schema::create('posts', function (Blueprint $table) {
     $table->foreignId('deleted_by')->nullable()->constrained('users');
 });
 ```
+
+### Graceful Column Handling
+
+If your table doesn't have blamable columns (`created_by`, `updated_by`, `deleted_by`), the trait will **silently skip** setting those columns. This allows you to enable blamable on models where only some audit columns exist:
+
+```php
+class Comment extends ModelBase
+{
+    protected bool $usesBlamable = true;
+
+    // Even if the table only has created_by and updated_by (no deleted_by),
+    // blamable will work for the columns that exist and skip the rest.
+}
+```
+
+The same graceful behavior applies to **timestamps** (`created_at`, `updated_at`). If a timestamp column doesn't exist on the table, it is silently skipped instead of causing an error.
+
+To enforce that all expected columns exist, enable [Strict Mode](#strict-mode).
 
 ### Customizing Column Names
 
@@ -419,6 +440,8 @@ This will create `config/devToolbelt/eloquent-plus.php` in your application.
 |--------|---------|-------------|
 | `blamable_field_type` | `'integer'` | Type of blamable fields (`created_by`, `updated_by`, `deleted_by`) |
 | `blamable_field_value` | `null` | Callable to customize user identifier extraction (only for `string` type) |
+| `blamable_strict_mode` | `false` | Throw exception if blamable columns are missing on the model |
+| `timestamps_strict_mode` | `false` | Throw exception if timestamp columns are missing on the model |
 
 #### Blamable Field Type
 
@@ -474,6 +497,34 @@ This is useful when:
 'blamable_field_value' => fn($user) => "user:{$user->id}",
 ```
 
+#### Strict Mode
+
+By default, missing blamable and timestamp columns are **silently skipped**. If you want to enforce that all expected columns exist on your models, enable strict mode:
+
+```php
+// config/devToolbelt/eloquent-plus.php
+return [
+    'blamable_strict_mode' => true,
+    'timestamps_strict_mode' => true,
+];
+```
+
+When strict mode is enabled, a `MissingModelPropertyException` is thrown if the model tries to set a column that doesn't exist:
+
+```php
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
+
+// With blamable_strict_mode = true
+// If the table is missing the 'created_by' column:
+try {
+    $post->save();
+} catch (MissingModelPropertyException $e) {
+    // 'The property "created_by" is required in model "App\Models\Post". ...'
+}
+```
+
+This is useful during development to catch missing migrations early. In production, you may prefer the default behavior (`false`) to avoid unexpected errors.
+
 ### ModelBase Constants
 
 | Constant | Default | Description |
@@ -495,6 +546,7 @@ This is useful when:
 | `$dateFormat` | `'Y-m-d H:i:s.u'` | Database date format |
 | `$snakeAttributes` | `false` | Snake case in serialization |
 | `$carbonInstanceInFieldDates` | `false` | Return Carbon vs string for dates |
+| `$usesBlamable` | `false` | Enable audit trail (created_by, updated_by, deleted_by) |
 
 ---
 

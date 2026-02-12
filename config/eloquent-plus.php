@@ -33,4 +33,28 @@ return [
     |
     */
     'blamable_field_value' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Blamable Strict Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, a MissingModelPropertyException will be thrown if a
+    | blamable column (created_by, updated_by, deleted_by) does not exist
+    | on the model. When disabled, missing columns are silently skipped.
+    |
+    */
+    'blamable_strict_mode' => false,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Timestamps Strict Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, a MissingModelPropertyException will be thrown if a
+    | timestamp column (created_at, updated_at) does not exist on the model.
+    | When disabled, missing columns are silently skipped.
+    |
+    */
+    'timestamps_strict_mode' => false,
 ];

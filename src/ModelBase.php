@@ -12,6 +12,7 @@ use DevToolbelt\LaravelEloquentPlus\Concerns\HasExternalId;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasHiddenAttributes;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasLifecycleHooks;
 use DevToolbelt\LaravelEloquentPlus\Concerns\HasValidation;
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use DevToolbelt\LaravelEloquentPlus\Exceptions\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -245,24 +246,33 @@ abstract class ModelBase extends Model
      * skipping timestamp columns that don't exist on the model.
      *
      * @return $this
+     * @throws MissingModelPropertyException
      */
     public function updateTimestamps()
     {
         $time = $this->freshTimestamp();
         $updatedAtColumn = $this->getUpdatedAtColumn();
         $createdAtColumn = $this->getCreatedAtColumn();
+        $strictMode = config('devToolbelt.eloquent-plus.timestamps_strict_mode', false);
 
-        if (
-            !$this->exists
-            && !is_null($createdAtColumn)
-            && $this->hasAttribute($createdAtColumn)
-            && !$this->isDirty($createdAtColumn)
-        ) {
-            $this->setCreatedAt($time);
+        if (!$this->exists && !is_null($createdAtColumn)) {
+            if (!$this->hasAttribute($createdAtColumn)) {
+                if ($strictMode) {
+                    throw new MissingModelPropertyException(static::class, $createdAtColumn);
+                }
+            } elseif (!$this->isDirty($createdAtColumn)) {
+                $this->setCreatedAt($time);
+            }
         }
 
-        if (!is_null($updatedAtColumn) && $this->hasAttribute($updatedAtColumn) && !$this->isDirty($updatedAtColumn)) {
-            $this->setUpdatedAt($time);
+        if (!is_null($updatedAtColumn)) {
+            if (!$this->hasAttribute($updatedAtColumn)) {
+                if ($strictMode) {
+                    throw new MissingModelPropertyException(static::class, $updatedAtColumn);
+                }
+            } elseif (!$this->isDirty($updatedAtColumn)) {
+                $this->setUpdatedAt($time);
+            }
         }
 
         return $this;

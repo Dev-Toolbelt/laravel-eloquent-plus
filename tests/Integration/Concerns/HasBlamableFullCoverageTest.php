@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration\Concerns;
 
+use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\BlamableWithoutColumnsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\BlamableWithoutConstantsModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ForceDeleteModel;
@@ -488,5 +489,64 @@ final class HasBlamableFullCoverageTest extends IntegrationTestCase
         ]);
 
         $this->assertNull($model->deleted_at);
+    }
+
+    public function testCreatingThrowsExceptionInBlamableStrictMode(): void
+    {
+        Auth::login($this->user);
+        config(['devToolbelt.eloquent-plus.blamable_strict_mode' => true]);
+
+        $this->expectException(MissingModelPropertyException::class);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+    }
+
+    public function testUpdatingThrowsExceptionInBlamableStrictMode(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+
+        config(['devToolbelt.eloquent-plus.blamable_strict_mode' => true]);
+
+        $this->expectException(MissingModelPropertyException::class);
+
+        $model->title = 'Updated';
+        $model->save();
+    }
+
+    public function testDeletingThrowsExceptionInBlamableStrictMode(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+
+        config(['devToolbelt.eloquent-plus.blamable_strict_mode' => true]);
+
+        $this->expectException(MissingModelPropertyException::class);
+
+        $model->delete();
+    }
+
+    public function testRestoringThrowsExceptionInBlamableStrictMode(): void
+    {
+        Auth::login($this->user);
+
+        $model = new BlamableWithoutColumnsModel();
+        $model->title = 'Test';
+        $model->save();
+        $model->delete();
+
+        config(['devToolbelt.eloquent-plus.blamable_strict_mode' => true]);
+
+        $this->expectException(MissingModelPropertyException::class);
+
+        $model->restore();
     }
 }

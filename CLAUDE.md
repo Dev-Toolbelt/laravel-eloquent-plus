@@ -29,33 +29,91 @@ composer phpstan
 
 ## Architecture
 
-This is a Laravel package (`dev-toolbelt/laravel-eloquent-plus`) that extends Eloquent's Model with additional functionality.
+This is a Laravel package (`dev-toolbelt/laravel-eloquent-plus`) that extends Eloquent's Model with additional functionality. Config namespace: `devToolbelt.eloquent-plus`.
 
 ### Core Components
 
 **ModelBase** (`src/ModelBase.php`) - Abstract base class that all models should extend. Provides:
 - Automatic validation via `$rules` property (applied on creating/updating events)
 - Lifecycle hooks: `beforeValidate()`, `beforeSave()`, `afterSave()`, `beforeDelete()`, `afterDelete()`
-- Automatic type casting inferred from validation rules (boolean, integer, numeric→float, date, array, Enum)
+- Automatic type casting inferred from validation rules (boolean, integer, numeric->float, date, array, Enum)
 - Built-in SoftDeletes with `deleted_at`, `deleted_by` tracking
-- `toArray()` excludes `deleted_at` and `deleted_by` by default
+- `toArray()` excludes `deleted_at` and `deleted_by` by default (via `HasHiddenAttributes`)
 - `fill()` handles camelCase to snake_case attribute conversion
+- `updateTimestamps()` override with `hasAttribute()` guards and strict mode support
+- `hasAttribute()` override checks `parent::hasAttribute()`, `$fillable`, and `$rules`
 
-**Blamable** (`src/Concerns/Blamable.php`) - Trait for automatic user audit tracking:
+**HasBlamable** (`src/Concerns/HasBlamable.php`) - Trait for automatic user audit tracking:
+- Disabled by default (`$usesBlamable = false`), must be enabled per model
 - Sets `created_by`, `updated_by` on create
 - Sets `updated_by` on update
-- Sets `deleted_by`, `updated_by` on soft delete
+- Sets `deleted_by`, `updated_by` on soft delete (via `runSoftDelete()` override)
 - Clears `deleted_by` and updates `updated_by` on restore
 - Uses `auth()->user()->getAuthIdentifier()` for user ID
+- Gracefully skips missing columns (controlled by `blamable_strict_mode` config)
+- Supports configurable field type (`integer`/`string`) and custom value callable
+
+**HasValidation** (`src/Concerns/HasValidation.php`) - Automatic validation:
+- Validates on `creating` and `updating` events
+- `autoPopulateFields()` pre-fills timestamps and blamable fields before validation
+- `setupRules()` auto-generates default rules for standard columns (PK, timestamps, blamable)
+- Blamable rules use `buildForeignKeyRules()` which respects `blamable_field_type` config
+- Throws `ValidationException` with detailed error info per field
+
+### Key Traits
+
+| Trait | File | Purpose |
+|-------|------|---------|
+| `HasBlamable` | `src/Concerns/HasBlamable.php` | User audit tracking (created_by, updated_by, deleted_by) |
+| `HasValidation` | `src/Concerns/HasValidation.php` | Automatic model validation with rules |
+| `HasExternalId` | `src/Concerns/HasExternalId.php` | UUID-based public identifiers |
+| `HasAutoCasting` | `src/Concerns/HasAutoCasting.php` | Infer casts from validation rules |
+| `HasDateFormatting` | `src/Concerns/HasDateFormatting.php` | Date output format control |
+| `HasLifecycleHooks` | `src/Concerns/HasLifecycleHooks.php` | Model lifecycle callbacks |
+| `HasHiddenAttributes` | `src/Concerns/HasHiddenAttributes.php` | Auto-hide sensitive fields |
+| `HasCastAliases` | `src/Concerns/HasCastAliases.php` | Custom cast short names |
 
 ### Column Constants
 
-ModelBase defines constants for standard columns that Blamable uses:
-- `CREATED_AT`, `UPDATED_AT`, `DELETED_AT` (timestamps)
-- `CREATED_BY`, `UPDATED_BY`, `DELETED_BY` (audit columns)
+ModelBase and HasBlamable define constants for standard columns:
+- `CREATED_AT`, `UPDATED_AT`, `DELETED_AT` (timestamps, defined in ModelBase)
+- `CREATED_BY`, `UPDATED_BY`, `DELETED_BY` (audit columns, defined in HasBlamable)
 
-### Test Structure
+### Configuration (`config/eloquent-plus.php`)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `blamable_field_type` | `'integer'` | Type of blamable fields (`'integer'` or `'string'`) |
+| `blamable_field_value` | `null` | Callable for custom user identifier (only for `'string'` type) |
+| `blamable_strict_mode` | `false` | Throw `MissingModelPropertyException` if blamable columns missing |
+| `timestamps_strict_mode` | `false` | Throw `MissingModelPropertyException` if timestamp columns missing |
+
+### Exceptions
+
+- `ValidationException` (`src/Exceptions/ValidationException.php`) - Thrown on validation failure, contains detailed error info per field
+- `MissingModelPropertyException` (`src/Exceptions/MissingModelPropertyException.php`) - Thrown in strict mode when expected columns are missing
+- `ExternalIdNotEnabledException` (`src/Exceptions/ExternalIdNotEnabledException.php`) - Thrown when calling external ID methods on models without it enabled
+
+### Service Provider
+
+`LaravelEloquentPlusServiceProvider` registers:
+- Cast aliases: `only_numbers`, `remove_special_chars`, `uuid_to_id`
+- Validators: `cpf_cnpj`, `cpf`, `cnpj`, `hex_color`
+- Config from `config/eloquent-plus.php`
+
+### Important Implementation Details
+
+- **Trait boot order matters**: `HasBlamable` boots before `HasValidation` in ModelBase. The `creating`/`updating` events from `HasBlamable` fire before `HasValidation`'s events.
+- **`autoPopulateFields()` and timestamps**: Timestamps are set in `autoPopulateFields()` without `hasAttribute()` checks (intentional - they get added to `$attributes` before `updateTimestamps()` runs). Blamable fields DO have `hasAttribute()` checks.
+- **`hasAttribute()` chicken-and-egg**: During model construction, `hasAttribute()` may return `false` for columns that exist in the table but aren't yet in `$attributes`, `$fillable`, or `$rules`. This is by design.
+- **`runSoftDelete()` override**: `HasBlamable::runSoftDelete` is used instead of `SoftDeletes::runSoftDelete` to include blamable columns in the soft delete query.
+- **phpcs max line length**: 120 characters. Extract long conditions into variables if needed.
+
+## Test Structure
 
 - Unit tests: `tests/Unit/`
-- Integration tests: `tests/Integration/` (use SQLite in-memory)
-- Base classes: `tests/TestCase.php`, `tests/IntegrationTestCase.php`
+- Integration tests: `tests/Integration/` (use SQLite in-memory via Orchestra Testbench)
+- Full coverage tests: `tests/Integration/Concerns/` (trait-specific deep tests)
+- Fixtures: `tests/Fixtures/` (test models, enums, users)
+- Base classes: `tests/TestCase.php` (unit), `tests/IntegrationTestCase.php` (integration with DB)
+- Test tables defined in `IntegrationTestCase::createTestTables()`: `users`, `test_models`, `simple_models`, `external_id_models`, `products`, `orders`
