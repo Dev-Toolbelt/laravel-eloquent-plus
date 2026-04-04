@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Integration;
 
 use DevToolbelt\LaravelEloquentPlus\Exceptions\MissingModelPropertyException;
+use DevToolbelt\LaravelEloquentPlus\ModelBase;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\ExternalIdModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\SimpleModel;
 use DevToolbelt\LaravelEloquentPlus\Tests\Fixtures\TestModel;
@@ -199,8 +200,12 @@ final class ModelBaseTest extends IntegrationTestCase
 
         $this->expectException(MissingModelPropertyException::class);
 
-        // Fresh model has no attributes, so hasAttribute('created_at') returns false
-        $model = new SimpleModel();
+        // Model whose table has no timestamp columns
+        $model = new class extends ModelBase {
+            protected $table = 'no_timestamps_models';
+            protected $fillable = ['title'];
+        };
+
         $model->updateTimestamps();
     }
 
@@ -210,8 +215,12 @@ final class ModelBaseTest extends IntegrationTestCase
 
         $this->expectException(MissingModelPropertyException::class);
 
-        // Simulate an existing model to skip created_at check
-        $model = new SimpleModel();
+        // Model whose table has no timestamp columns, simulated as existing to skip created_at
+        $model = new class extends ModelBase {
+            protected $table = 'no_timestamps_models';
+            protected $fillable = ['title'];
+        };
+
         $model->exists = true;
         $model->updateTimestamps();
     }
@@ -220,9 +229,13 @@ final class ModelBaseTest extends IntegrationTestCase
     {
         config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => false]);
 
-        // Fresh model has no attributes, so hasAttribute('created_at') returns false
+        // Model whose table has no timestamp columns
         // With strict mode disabled, it should silently skip without throwing
-        $model = new SimpleModel();
+        $model = new class extends ModelBase {
+            protected $table = 'no_timestamps_models';
+            protected $fillable = ['title'];
+        };
+
         $model->updateTimestamps();
 
         // Timestamps should not have been set since hasAttribute returned false

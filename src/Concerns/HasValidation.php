@@ -265,12 +265,21 @@ trait HasValidation
         $now = $this->freshTimestamp();
 
         // Autopopulate created_at if not set and model is new
-        if ($this->timestamps && !$this->exists && empty($this->getAttribute(static::CREATED_AT))) {
+        if (
+            $this->timestamps
+            && $this->hasAttribute(static::CREATED_AT)
+            && !$this->exists
+            && empty($this->getAttribute(static::CREATED_AT))
+        ) {
             $this->setAttribute(static::CREATED_AT, $now);
         }
 
         // Autopopulate updated_at if not set
-        if ($this->timestamps && empty($this->getAttribute(static::UPDATED_AT))) {
+        if (
+            $this->timestamps
+            && $this->hasAttribute(static::UPDATED_AT)
+            && empty($this->getAttribute(static::UPDATED_AT))
+        ) {
             $this->setAttribute(static::UPDATED_AT, $now);
         }
 

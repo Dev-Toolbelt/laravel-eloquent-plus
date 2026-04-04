@@ -34,11 +34,13 @@ class TestModel extends ModelBase
 
     public function __construct(array $attributes = [])
     {
-        // Pre-populate only blamable attributes to make hasAttribute return true
         $this->attributes = [
             'created_by' => null,
             'updated_by' => null,
             'deleted_by' => null,
+            'created_at' => null,
+            'updated_at' => null,
+            'deleted_at' => null,
         ];
 
         $this->rules = [

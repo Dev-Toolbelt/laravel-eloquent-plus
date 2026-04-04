@@ -12,6 +12,9 @@ class SimpleModel extends ModelBase
 
     protected $fillable = [
         'title',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
     protected array $rules = [];

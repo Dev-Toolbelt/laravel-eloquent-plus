@@ -103,5 +103,10 @@ abstract class IntegrationTestCase extends OrchestraTestCase
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('no_timestamps_models', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+        });
     }
 }

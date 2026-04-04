@@ -348,9 +348,14 @@ final class HasValidationFullCoverageTest extends IntegrationTestCase
         $model->save();
 
         // The custom date should be preserved
+        $createdAt = $model->created_at;
+        $actual = $createdAt instanceof \Illuminate\Support\Carbon
+            ? $createdAt->format('Y-m-d H:i:s')
+            : substr((string) $createdAt, 0, 19);
+
         $this->assertSame(
             $customDate->format('Y-m-d H:i:s'),
-            $model->created_at->format('Y-m-d H:i:s')
+            $actual
         );
     }
 

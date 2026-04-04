@@ -283,14 +283,22 @@ trait HasBlamable
 
         $time = $this->freshTimestamp();
 
-        $columns = [$this->getDeletedAtColumn() => $this->fromDateTime($time)];
+        $columns = [];
 
-        $this->{$this->getDeletedAtColumn()} = $time;
+        $deletedAtColumn = $this->getDeletedAtColumn();
+        if ($this->hasAttribute($deletedAtColumn)) {
+            $columns[$deletedAtColumn] = $this->fromDateTime($time);
+            $this->{$deletedAtColumn} = $time;
+        }
 
-        if ($this->usesTimestamps() && !is_null($this->getUpdatedAtColumn())) {
-            $this->{$this->getUpdatedAtColumn()} = $time;
-
-            $columns[$this->getUpdatedAtColumn()] = $this->fromDateTime($time);
+        $updatedAtColumn = $this->getUpdatedAtColumn();
+        if (
+            $this->usesTimestamps()
+            && !is_null($updatedAtColumn)
+            && $this->hasAttribute($updatedAtColumn)
+        ) {
+            $this->{$updatedAtColumn} = $time;
+            $columns[$updatedAtColumn] = $this->fromDateTime($time);
         }
 
         // Include blamable columns if blamable is enabled
