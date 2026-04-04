@@ -459,33 +459,119 @@ final class PartialColumnsTest extends IntegrationTestCase
     }
 
     // -------------------------------------------------------
-    // updateTimestamps with partial columns
+    // getCreatedAtColumn / getUpdatedAtColumn with partial columns
     // -------------------------------------------------------
 
-    public function testUpdateTimestampsSkipsCreatedAtWhenNotDeclared(): void
+    public function testGetCreatedAtColumnReturnsNullWhenNotDeclared(): void
     {
         $model = new class extends ModelBase {
             protected $table = 'only_updated_at_models';
             protected $fillable = ['title', 'updated_at'];
         };
 
-        $model->updateTimestamps();
-
-        $this->assertArrayNotHasKey('created_at', $model->getAttributes());
-        $this->assertArrayHasKey('updated_at', $model->getAttributes());
+        $this->assertNull($model->getCreatedAtColumn());
+        $this->assertSame('updated_at', $model->getUpdatedAtColumn());
     }
 
-    public function testUpdateTimestampsSkipsUpdatedAtWhenNotDeclared(): void
+    public function testGetUpdatedAtColumnReturnsNullWhenNotDeclared(): void
     {
         $model = new class extends ModelBase {
             protected $table = 'only_created_at_models';
             protected $fillable = ['title', 'created_at'];
         };
 
-        $model->updateTimestamps();
+        $this->assertSame('created_at', $model->getCreatedAtColumn());
+        $this->assertNull($model->getUpdatedAtColumn());
+    }
 
-        $this->assertArrayHasKey('created_at', $model->getAttributes());
+    // -------------------------------------------------------
+    // Full save flow (create + update) without timestamps
+    // -------------------------------------------------------
+
+    public function testCreateAndUpdateModelWithoutTimestampColumns(): void
+    {
+        $model = new class extends ModelBase {
+            protected $table = 'no_timestamps_with_fields';
+            protected $fillable = ['name', 'price', 'quantity'];
+            protected array $rules = [
+                'name' => ['required', 'string'],
+                'price' => ['required', 'numeric'],
+                'quantity' => ['required', 'integer'],
+            ];
+        };
+
+        $model->name = 'Test';
+        $model->price = 10.50;
+        $model->quantity = 100;
+        $model->save();
+
+        $this->assertNotNull($model->id);
+        $this->assertArrayNotHasKey('created_at', $model->getAttributes());
         $this->assertArrayNotHasKey('updated_at', $model->getAttributes());
+
+        // Update should not try to set updated_at
+        $model->price = 7;
+        $model->quantity = 1428;
+        $model->save();
+
+        $row = DB::table('no_timestamps_with_fields')
+            ->where('id', $model->id)
+            ->first();
+
+        $this->assertEquals(7, $row->price);
+        $this->assertEquals(1428, $row->quantity);
+    }
+
+    public function testUpdateModelLoadedFromDbWithoutTimestampColumns(): void
+    {
+        DB::table('no_timestamps_with_fields')->insert([
+            'name' => 'Test',
+            'price' => 10.50,
+            'quantity' => 100,
+        ]);
+
+        $modelClass = new class extends ModelBase {
+            protected $table = 'no_timestamps_with_fields';
+            protected $fillable = ['name', 'price', 'quantity'];
+            protected array $rules = [
+                'name' => ['required', 'string'],
+                'price' => ['required', 'numeric'],
+                'quantity' => ['required', 'integer'],
+            ];
+        };
+
+        // Load from DB (simulates find())
+        $model = $modelClass::query()->first();
+
+        $model->price = 7;
+        $model->quantity = 1428;
+        $model->save();
+
+        $row = DB::table('no_timestamps_with_fields')
+            ->where('id', $model->id)
+            ->first();
+
+        $this->assertEquals(7, $row->price);
+        $this->assertEquals(1428, $row->quantity);
+    }
+
+    public function testHasAttributeReturnsFalseForUndeclaredTimestamps(): void
+    {
+        $model = new class extends ModelBase {
+            protected $table = 'no_timestamps_with_fields';
+            protected $fillable = ['name', 'price', 'quantity'];
+            protected array $rules = [
+                'name' => ['required', 'string'],
+                'price' => ['required', 'numeric'],
+                'quantity' => ['required', 'integer'],
+            ];
+        };
+
+        $this->assertFalse($model->hasAttribute('created_at'));
+        $this->assertFalse($model->hasAttribute('updated_at'));
+        $this->assertFalse($model->hasAttribute('deleted_at'));
+        $this->assertTrue($model->hasAttribute('name'));
+        $this->assertTrue($model->hasAttribute('price'));
     }
 
     // -------------------------------------------------------

@@ -194,52 +194,52 @@ final class ModelBaseTest extends IntegrationTestCase
         $this->assertArrayNotHasKey('deleted_by', $array);
     }
 
-    public function testUpdateTimestampsThrowsExceptionInStrictModeForCreatedAt(): void
+    public function testGetCreatedAtColumnThrowsExceptionInStrictMode(): void
     {
         config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => true]);
 
         $this->expectException(MissingModelPropertyException::class);
 
-        // Model whose table has no timestamp columns
         $model = new class extends ModelBase {
             protected $table = 'no_timestamps_models';
             protected $fillable = ['title'];
         };
 
-        $model->updateTimestamps();
+        $model->getCreatedAtColumn();
     }
 
-    public function testUpdateTimestampsThrowsExceptionInStrictModeForUpdatedAt(): void
+    public function testGetUpdatedAtColumnThrowsExceptionInStrictMode(): void
     {
         config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => true]);
 
         $this->expectException(MissingModelPropertyException::class);
 
-        // Model whose table has no timestamp columns, simulated as existing to skip created_at
         $model = new class extends ModelBase {
             protected $table = 'no_timestamps_models';
             protected $fillable = ['title'];
         };
 
-        $model->exists = true;
-        $model->updateTimestamps();
+        $model->getUpdatedAtColumn();
     }
 
-    public function testUpdateTimestampsSilentlySkipsWhenStrictModeDisabled(): void
+    public function testGetTimestampColumnsReturnsNullWhenNotDeclared(): void
     {
         config(['devToolbelt.eloquent-plus.timestamps_strict_mode' => false]);
 
-        // Model whose table has no timestamp columns
-        // With strict mode disabled, it should silently skip without throwing
         $model = new class extends ModelBase {
             protected $table = 'no_timestamps_models';
             protected $fillable = ['title'];
         };
 
-        $model->updateTimestamps();
+        $this->assertNull($model->getCreatedAtColumn());
+        $this->assertNull($model->getUpdatedAtColumn());
+    }
 
-        // Timestamps should not have been set since hasAttribute returned false
-        $this->assertArrayNotHasKey('created_at', $model->getAttributes());
-        $this->assertArrayNotHasKey('updated_at', $model->getAttributes());
+    public function testGetTimestampColumnsReturnsNameWhenDeclared(): void
+    {
+        $model = new SimpleModel();
+
+        $this->assertSame('created_at', $model->getCreatedAtColumn());
+        $this->assertSame('updated_at', $model->getUpdatedAtColumn());
     }
 }

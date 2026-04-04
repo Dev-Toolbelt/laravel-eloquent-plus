@@ -142,5 +142,12 @@ abstract class IntegrationTestCase extends OrchestraTestCase
             $table->string('title');
             $table->timestamps();
         });
+
+        Schema::create('no_timestamps_with_fields', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->decimal('price', 10, 2);
+            $table->integer('quantity');
+        });
     }
 }

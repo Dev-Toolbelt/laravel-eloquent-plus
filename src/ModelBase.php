@@ -240,42 +240,53 @@ abstract class ModelBase extends Model
     }
 
     /**
-     * Update the creation and update timestamps.
+     * Get the name of the "created at" column.
      *
-     * Overrides HasTimestamps to add hasAttribute checks,
-     * skipping timestamp columns that don't exist on the model.
+     * Returns null when the column is not declared on the model,
+     * which prevents Laravel from auto-managing undeclared timestamp columns.
      *
-     * @return $this
-     * @throws MissingModelPropertyException
+     * @return string|null
      */
-    public function updateTimestamps()
+    public function getCreatedAtColumn()
     {
-        $time = $this->freshTimestamp();
-        $updatedAtColumn = $this->getUpdatedAtColumn();
-        $createdAtColumn = $this->getCreatedAtColumn();
-        $strictMode = config('devToolbelt.eloquent-plus.timestamps_strict_mode', false);
+        $column = static::CREATED_AT;
 
-        if (!$this->exists && !is_null($createdAtColumn)) {
-            if (!$this->hasAttribute($createdAtColumn)) {
-                if ($strictMode) {
-                    throw new MissingModelPropertyException(static::class, $createdAtColumn);
-                }
-            } elseif (!$this->isDirty($createdAtColumn)) {
-                $this->setCreatedAt($time);
+        if (!$this->hasAttribute($column)) {
+            $strictMode = config('devToolbelt.eloquent-plus.timestamps_strict_mode', false);
+
+            if ($strictMode) {
+                throw new MissingModelPropertyException(static::class, $column);
             }
+
+            return null;
         }
 
-        if (!is_null($updatedAtColumn)) {
-            if (!$this->hasAttribute($updatedAtColumn)) {
-                if ($strictMode) {
-                    throw new MissingModelPropertyException(static::class, $updatedAtColumn);
-                }
-            } elseif (!$this->isDirty($updatedAtColumn)) {
-                $this->setUpdatedAt($time);
+        return $column;
+    }
+
+    /**
+     * Get the name of the "updated at" column.
+     *
+     * Returns null when the column is not declared on the model,
+     * which prevents Laravel from auto-managing undeclared timestamp columns.
+     *
+     * @return string|null
+     */
+    public function getUpdatedAtColumn()
+    {
+        $column = static::UPDATED_AT;
+
+        if (!$this->hasAttribute($column)) {
+            $strictMode = config('devToolbelt.eloquent-plus.timestamps_strict_mode', false);
+
+            if ($strictMode) {
+                throw new MissingModelPropertyException(static::class, $column);
             }
+
+            return null;
         }
 
-        return $this;
+        return $column;
     }
 
     /**

@@ -14,7 +14,13 @@ use DevToolbelt\LaravelEloquentPlus\ModelBase;
 class LifecycleHooksModel extends ModelBase
 {
     protected $table = 'test_models';
-    protected $guarded = [];
+
+    protected $fillable = [
+        'name',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
 
     /** @var array<string, int> */
     public array $hooksCalled = [
