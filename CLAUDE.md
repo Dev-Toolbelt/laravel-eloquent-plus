@@ -55,8 +55,8 @@ This is a Laravel package (`dev-toolbelt/laravel-eloquent-plus`) that extends El
 
 **HasValidation** (`src/Concerns/HasValidation.php`) - Automatic validation:
 - Validates on `creating` and `updating` events
-- `autoPopulateFields()` pre-fills timestamps and blamable fields before validation
-- `setupRules()` auto-generates default rules for standard columns (PK, timestamps, blamable)
+- `autoPopulateFields()` pre-fills timestamps and blamable fields before validation, guarded by `hasAttribute()` checks for all fields (both timestamps and blamable)
+- `setupRules()` auto-generates default rules for standard columns (PK, timestamps, blamable), only for columns that pass `hasAttribute()`
 - Blamable rules use `buildForeignKeyRules()` which respects `blamable_field_type` config
 - Throws `ValidationException` with detailed error info per field
 
@@ -104,9 +104,10 @@ ModelBase and HasBlamable define constants for standard columns:
 ### Important Implementation Details
 
 - **Trait boot order matters**: `HasBlamable` boots before `HasValidation` in ModelBase. The `creating`/`updating` events from `HasBlamable` fire before `HasValidation`'s events.
-- **`autoPopulateFields()` and timestamps**: Timestamps are set in `autoPopulateFields()` without `hasAttribute()` checks (intentional - they get added to `$attributes` before `updateTimestamps()` runs). Blamable fields DO have `hasAttribute()` checks.
-- **`hasAttribute()` chicken-and-egg**: During model construction, `hasAttribute()` may return `false` for columns that exist in the table but aren't yet in `$attributes`, `$fillable`, or `$rules`. This is by design.
-- **`runSoftDelete()` override**: `HasBlamable::runSoftDelete` is used instead of `SoftDeletes::runSoftDelete` to include blamable columns in the soft delete query.
+- **`autoPopulateFields()` and timestamps**: Both timestamps and blamable fields use `hasAttribute()` checks in `autoPopulateFields()`. Models must declare their columns in `$fillable`, `$rules`, or pre-populate `$attributes` for `hasAttribute()` to detect them. This enables partial column support — a model with `$timestamps = true` doesn't need all timestamp columns.
+- **`hasAttribute()` relies on declared columns**: `hasAttribute()` checks `parent::hasAttribute()`, `$fillable`, and `$rules`. It does NOT check the database schema. Models must explicitly declare columns they use. During model construction, `hasAttribute()` may return `false` for columns that exist in the table but aren't declared in `$attributes`, `$fillable`, or `$rules`. This is by design.
+- **Partial column support**: Both `$timestamps = true` and `$usesBlamable = true` support partial columns. A model can have only `created_at` without `updated_at`, or only `created_by` without `updated_by`/`deleted_by`. Undeclared columns are silently skipped.
+- **`runSoftDelete()` override**: `HasBlamable::runSoftDelete` is used instead of `SoftDeletes::runSoftDelete` to include blamable columns in the soft delete query. Both `deleted_at`/`updated_at` and blamable columns are guarded by `hasAttribute()` checks, supporting partial column scenarios.
 - **phpcs max line length**: 120 characters. Extract long conditions into variables if needed.
 
 ## Test Structure
@@ -116,4 +117,5 @@ ModelBase and HasBlamable define constants for standard columns:
 - Full coverage tests: `tests/Integration/Concerns/` (trait-specific deep tests)
 - Fixtures: `tests/Fixtures/` (test models, enums, users)
 - Base classes: `tests/TestCase.php` (unit), `tests/IntegrationTestCase.php` (integration with DB)
-- Test tables defined in `IntegrationTestCase::createTestTables()`: `users`, `test_models`, `simple_models`, `external_id_models`, `products`, `orders`
+- Test tables defined in `IntegrationTestCase::createTestTables()`: `users`, `test_models`, `simple_models`, `external_id_models`, `products`, `orders`, `no_timestamps_models`, `only_created_at_models`, `only_updated_at_models`, `partial_blamable_models`, `only_deleted_by_models`, `no_deleted_at_models`
+- Partial columns tests: `tests/Integration/PartialColumnsTest.php` (covers partial timestamps, partial blamable, runSoftDelete, autoPopulateFields, setupRules, and updateTimestamps with missing columns)

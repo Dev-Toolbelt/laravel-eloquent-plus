@@ -58,7 +58,14 @@ use DevToolbelt\LaravelEloquentPlus\ModelBase;
 
 class Product extends ModelBase
 {
-    protected $fillable = ['name', 'price', 'sku'];
+    protected $fillable = [
+        'name',
+        'price',
+        'sku',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
 
     protected array $rules = [
         'name' => ['required', 'string', 'max:255'],
@@ -67,6 +74,8 @@ class Product extends ModelBase
     ];
 }
 ```
+
+> **Note:** Timestamp and blamable columns must be declared in `$fillable`, `$rules`, or pre-populated in `$attributes` for them to be automatically managed. Only declared columns are populated — undeclared ones are silently skipped.
 
 That's it! Your model now has:
 - Automatic validation before create/update
@@ -163,10 +172,16 @@ class Post extends ModelBase
     // Enable blamable audit tracking
     protected bool $usesBlamable = true;
 
-    // These columns are automatically populated:
-    // - created_by: Set on create (authenticated user ID)
-    // - updated_by: Set on create and update
-    // - deleted_by: Set on soft delete
+    protected $fillable = [
+        'title',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        // Declare blamable columns to enable automatic population:
+        'created_by', // Set on create (authenticated user ID)
+        'updated_by', // Set on create and update
+        'deleted_by', // Set on soft delete
+    ];
 }
 ```
 
@@ -186,21 +201,46 @@ Schema::create('posts', function (Blueprint $table) {
 });
 ```
 
-### Graceful Column Handling
+### Partial Column Support
 
-If your table doesn't have blamable columns (`created_by`, `updated_by`, `deleted_by`), the trait will **silently skip** setting those columns. This allows you to enable blamable on models where only some audit columns exist:
+Both blamable and timestamps support **partial columns**. You don't need all columns — only the ones you declare in `$fillable`, `$rules`, or `$attributes` will be populated. Undeclared columns are silently skipped.
+
+**Partial blamable columns:**
 
 ```php
 class Comment extends ModelBase
 {
     protected bool $usesBlamable = true;
 
-    // Even if the table only has created_by and updated_by (no deleted_by),
-    // blamable will work for the columns that exist and skip the rest.
+    protected $fillable = [
+        'body',
+        'created_by', // Only track who created
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    // updated_by and deleted_by are not declared,
+    // so they will be silently skipped.
 }
 ```
 
-The same graceful behavior applies to **timestamps** (`created_at`, `updated_at`). If a timestamp column doesn't exist on the table, it is silently skipped instead of causing an error.
+**Partial timestamp columns:**
+
+```php
+class EventLog extends ModelBase
+{
+    protected $fillable = [
+        'event',
+        'created_at', // Only track creation time
+    ];
+
+    // updated_at is not declared, so it will be silently skipped
+    // even though $timestamps = true.
+}
+```
+
+> **Important:** `hasAttribute()` checks `$fillable`, `$rules`, and `$attributes` to determine if a column exists on the model. It does **not** query the database schema. You must explicitly declare the columns your model uses.
 
 To enforce that all expected columns exist, enable [Strict Mode](#strict-mode).
 
@@ -562,12 +602,20 @@ use App\Enums\OrderStatus;
 
 class Order extends ModelBase
 {
+    protected bool $usesBlamable = true;
+
     protected $fillable = [
         'customer_id',
         'status',
         'total',
         'notes',
         'delivered_at',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
     protected array $rules = [
