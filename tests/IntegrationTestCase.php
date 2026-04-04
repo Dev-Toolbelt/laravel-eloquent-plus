@@ -108,5 +108,39 @@ abstract class IntegrationTestCase extends OrchestraTestCase
             $table->id();
             $table->string('title');
         });
+
+        Schema::create('only_created_at_models', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('only_updated_at_models', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->timestamp('updated_at')->nullable();
+        });
+
+        Schema::create('partial_blamable_models', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('only_deleted_by_models', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('no_deleted_at_models', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->timestamps();
+        });
     }
 }
