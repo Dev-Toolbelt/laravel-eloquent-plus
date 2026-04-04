@@ -40,7 +40,7 @@ This is a Laravel package (`dev-toolbelt/laravel-eloquent-plus`) that extends El
 - Built-in SoftDeletes with `deleted_at`, `deleted_by` tracking
 - `toArray()` excludes `deleted_at` and `deleted_by` by default (via `HasHiddenAttributes`)
 - `fill()` handles camelCase to snake_case attribute conversion
-- `updateTimestamps()` override with `hasAttribute()` guards and strict mode support
+- `getCreatedAtColumn()`/`getUpdatedAtColumn()` overrides return `null` when column not declared, preventing Laravel from auto-managing undeclared timestamp columns (including `Builder::addUpdatedAtColumn()`)
 - `hasAttribute()` override checks `parent::hasAttribute()`, `$fillable`, and `$rules`
 
 **HasBlamable** (`src/Concerns/HasBlamable.php`) - Trait for automatic user audit tracking:
@@ -106,7 +106,7 @@ ModelBase and HasBlamable define constants for standard columns:
 - **Trait boot order matters**: `HasBlamable` boots before `HasValidation` in ModelBase. The `creating`/`updating` events from `HasBlamable` fire before `HasValidation`'s events.
 - **`autoPopulateFields()` and timestamps**: Both timestamps and blamable fields use `hasAttribute()` checks in `autoPopulateFields()`. Models must declare their columns in `$fillable`, `$rules`, or pre-populate `$attributes` for `hasAttribute()` to detect them. This enables partial column support — a model with `$timestamps = true` doesn't need all timestamp columns.
 - **`hasAttribute()` relies on declared columns**: `hasAttribute()` checks `parent::hasAttribute()`, `$fillable`, and `$rules`. It does NOT check the database schema. Models must explicitly declare columns they use. During model construction, `hasAttribute()` may return `false` for columns that exist in the table but aren't declared in `$attributes`, `$fillable`, or `$rules`. This is by design.
-- **Partial column support**: Both `$timestamps = true` and `$usesBlamable = true` support partial columns. A model can have only `created_at` without `updated_at`, or only `created_by` without `updated_by`/`deleted_by`. Undeclared columns are silently skipped.
+- **Partial column support**: Both `$timestamps = true` and `$usesBlamable = true` support partial columns. A model can have only `created_at` without `updated_at`, or only `created_by` without `updated_by`/`deleted_by`. Undeclared columns are silently skipped. This is achieved via `getCreatedAtColumn()`/`getUpdatedAtColumn()` returning `null` for undeclared columns, which also prevents Laravel's `Builder::addUpdatedAtColumn()` from injecting `updated_at` into UPDATE queries.
 - **`runSoftDelete()` override**: `HasBlamable::runSoftDelete` is used instead of `SoftDeletes::runSoftDelete` to include blamable columns in the soft delete query. Both `deleted_at`/`updated_at` and blamable columns are guarded by `hasAttribute()` checks, supporting partial column scenarios.
 - **phpcs max line length**: 120 characters. Extract long conditions into variables if needed.
 
