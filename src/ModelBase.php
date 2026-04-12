@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Throwable;
 use TypeError;
@@ -112,6 +113,14 @@ abstract class ModelBase extends Model
      * @var bool
      */
     public $incrementing = true;
+
+    /**
+     * Indicates whether loaded relations should be appended to toArray()
+     * output as soft array representations.
+     *
+     * @var bool
+     */
+    public bool $addsRelationsInToArray = false;
 
     /**
      * Boot the soft deleting trait for a model.
@@ -246,6 +255,7 @@ abstract class ModelBase extends Model
      * which prevents Laravel from auto-managing undeclared timestamp columns.
      *
      * @return string|null
+     * @throws MissingModelPropertyException
      */
     public function getCreatedAtColumn()
     {
@@ -271,6 +281,7 @@ abstract class ModelBase extends Model
      * which prevents Laravel from auto-managing undeclared timestamp columns.
      *
      * @return string|null
+     * @throws MissingModelPropertyException
      */
     public function getUpdatedAtColumn()
     {
@@ -316,6 +327,26 @@ abstract class ModelBase extends Model
 
         if ($this->usesExternalId()) {
             $data[$this->primaryKey] = $this->getExternalId();
+        }
+
+        if ($this->addsRelationsInToArray) {
+            foreach ($this->getRelations() as $relationName => $relation) {
+                if ($relation === null) {
+                    $data[$relationName] = null;
+                    continue;
+                }
+
+                if ($relation instanceof self) {
+                    $data[$relationName] = $relation->toSoftArray();
+                    continue;
+                }
+
+                if ($relation instanceof Collection) {
+                    $data[$relationName] = $relation
+                        ->map(fn ($item) => $item instanceof self ? $item->toSoftArray() : $item->toArray())
+                        ->all();
+                }
+            }
         }
 
         return $data;

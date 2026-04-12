@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace DevToolbelt\LaravelEloquentPlus\Tests\Fixtures;
 
 use DevToolbelt\LaravelEloquentPlus\ModelBase;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductModel extends ModelBase
 {
+    public function orders(): HasMany
+    {
+        return $this->hasMany(OrderModel::class, 'product_id');
+    }
+
     protected $table = 'products';
 
     protected $fillable = [

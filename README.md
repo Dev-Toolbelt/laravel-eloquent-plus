@@ -304,6 +304,53 @@ Schema::create('orders', function (Blueprint $table) {
 
 ---
 
+## Relations in `toArray()`
+
+By default, when a relation is eager-loaded, Eloquent serializes its **full** array
+representation inside `toArray()`. Set `$addsRelationsInToArray = true` on the model
+to replace each loaded relation with its lightweight `toSoftArray()` form (only the
+identifier, or the external ID when enabled). Useful for API responses where you want
+to expose related records as references instead of nested payloads.
+
+```php
+class Order extends ModelBase
+{
+    public $addsRelationsInToArray = true;
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+}
+```
+
+```php
+$order = Order::with(['product', 'items'])->find(1);
+
+$order->toArray();
+// [
+//     'id' => '...',
+//     'total' => 99.99,
+//     'product' => ['id' => '550e8400-...'],          // toSoftArray()
+//     'items'   => [['id' => 10], ['id' => 11]],      // collection of toSoftArray()
+// ]
+```
+
+**Behavior notes:**
+
+- Only **loaded** relations are processed — unloaded relations are not added.
+- A `belongsTo` that resolves to `null` is preserved as `null` in the output.
+- An empty `hasMany` / `hasManyThrough` collection becomes `[]`.
+- Items in a relation collection that don't extend `ModelBase` fall back to their
+  default `toArray()` representation.
+
+---
+
 ## Auto-Casting
 
 Types are automatically inferred from validation rules:
@@ -587,6 +634,7 @@ This is useful during development to catch missing migrations early. In producti
 | `$snakeAttributes` | `false` | Snake case in serialization |
 | `$carbonInstanceInFieldDates` | `false` | Return Carbon vs string for dates |
 | `$usesBlamable` | `false` | Enable audit trail (created_by, updated_by, deleted_by) |
+| `$addsRelationsInToArray` | `false` | Replace loaded relations in `toArray()` with their `toSoftArray()` representation |
 
 ---
 

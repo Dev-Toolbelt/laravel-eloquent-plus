@@ -42,6 +42,7 @@ This is a Laravel package (`dev-toolbelt/laravel-eloquent-plus`) that extends El
 - `fill()` handles camelCase to snake_case attribute conversion
 - `getCreatedAtColumn()`/`getUpdatedAtColumn()` overrides return `null` when column not declared, preventing Laravel from auto-managing undeclared timestamp columns (including `Builder::addUpdatedAtColumn()`)
 - `hasAttribute()` override checks `parent::hasAttribute()`, `$fillable`, and `$rules`
+- `$addsRelationsInToArray` (default `false`): when `true`, `toArray()` replaces each loaded relation with its `toSoftArray()` form. `belongsTo` resolving to `null` is preserved as `null`; empty `hasMany` collections become `[]`; collection items not extending `ModelBase` fall back to default `toArray()`. Unloaded relations are not added.
 
 **HasBlamable** (`src/Concerns/HasBlamable.php`) - Trait for automatic user audit tracking:
 - Disabled by default (`$usesBlamable = false`), must be enabled per model
@@ -119,3 +120,4 @@ ModelBase and HasBlamable define constants for standard columns:
 - Base classes: `tests/TestCase.php` (unit), `tests/IntegrationTestCase.php` (integration with DB)
 - Test tables defined in `IntegrationTestCase::createTestTables()`: `users`, `test_models`, `simple_models`, `external_id_models`, `products`, `orders`, `no_timestamps_models`, `only_created_at_models`, `only_updated_at_models`, `partial_blamable_models`, `only_deleted_by_models`, `no_deleted_at_models`
 - Partial columns tests: `tests/Integration/PartialColumnsTest.php` (covers partial timestamps, partial blamable, runSoftDelete, autoPopulateFields, setupRules, and updateTimestamps with missing columns)
+- Relations in toArray tests: `tests/Integration/AddsRelationsInToArrayTest.php` (covers `$addsRelationsInToArray` for belongsTo, hasMany, null relations, empty collections, disabled state, and unloaded relations)
