@@ -8,6 +8,7 @@ use DevToolbelt\LaravelEloquentPlus\Casts\OnlyNumbers;
 use DevToolbelt\LaravelEloquentPlus\Tests\TestCase;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class OnlyNumbersTest extends TestCase
 {
@@ -21,9 +22,7 @@ final class OnlyNumbersTest extends TestCase
         $this->model = Mockery::mock(Model::class);
     }
 
-    /**
-     * @dataProvider setValueProvider
-     */
+    #[DataProvider('setValueProvider')]
     public function testSetRemovesNonNumericCharacters(mixed $input, ?string $expected): void
     {
         $result = $this->cast->set($this->model, 'phone', $input, []);

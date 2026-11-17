@@ -37,6 +37,7 @@ This is a Laravel package (`dev-toolbelt/laravel-eloquent-plus`) that extends El
 - Automatic validation via `$rules` property (applied on creating/updating events)
 - Lifecycle hooks: `beforeValidate()`, `beforeSave()`, `afterSave()`, `beforeDelete()`, `afterDelete()`
 - Automatic type casting inferred from validation rules (boolean, integer, numeric->float, date, array, Enum)
+- `registerGlobalScopes()` override drops the SoftDeletes scope when the model does not declare `deleted_at` (evaluated lazily on a constructed instance; instantiating a model inside `boot*` methods throws on Laravel 12+)
 - Built-in SoftDeletes with `deleted_at`, `deleted_by` tracking
 - `toArray()` excludes `deleted_at` and `deleted_by` by default (via `HasHiddenAttributes`)
 - `fill()` handles camelCase to snake_case attribute conversion

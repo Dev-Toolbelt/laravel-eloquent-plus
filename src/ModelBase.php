@@ -123,18 +123,25 @@ abstract class ModelBase extends Model
     public bool $addsRelationsInToArray = false;
 
     /**
-     * Boot the soft deleting trait for a model.
+     * Register the global scopes for this builder instance.
      *
-     * @return void
+     * The soft deleting scope (registered by the SoftDeletes trait) is dropped
+     * when the model does not declare the deleted_at column. This is evaluated
+     * here, on a fully constructed instance, because instantiating the model
+     * while it is booting is not allowed by Laravel 12+.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<static> $builder
+     * @return \Illuminate\Database\Eloquent\Builder<static>
      */
-    public static function bootSoftDeletes()
+    public function registerGlobalScopes($builder)
     {
-        /** @phpstan-ignore new.static */
-        $model = new static();
+        parent::registerGlobalScopes($builder);
 
-        if ($model->hasAttribute($model->getDeletedAtColumn())) {
-            static::addGlobalScope(new SoftDeletingScope());
+        if (!$this->hasAttribute($this->getDeletedAtColumn())) {
+            $builder->withoutGlobalScope(SoftDeletingScope::class);
         }
+
+        return $builder;
     }
 
     /**

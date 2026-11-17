@@ -6,6 +6,7 @@ namespace DevToolbelt\LaravelEloquentPlus\Tests\Unit\Validators;
 
 use DevToolbelt\LaravelEloquentPlus\Tests\TestCase;
 use DevToolbelt\LaravelEloquentPlus\Validators\HexColor;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class HexColorTest extends TestCase
 {
@@ -17,9 +18,7 @@ final class HexColorTest extends TestCase
         $this->validator = new HexColor();
     }
 
-    /**
-     * @dataProvider validHexColorsProvider
-     */
+    #[DataProvider('validHexColorsProvider')]
     public function testValidHexColors(string $color): void
     {
         $failed = false;
@@ -41,9 +40,7 @@ final class HexColorTest extends TestCase
         $this->assertFalse($failed, "Color '{$color}' should be valid but got: {$failMessage}");
     }
 
-    /**
-     * @dataProvider invalidHexColorsProvider
-     */
+    #[DataProvider('invalidHexColorsProvider')]
     public function testInvalidHexColors(mixed $color): void
     {
         $failed = false;

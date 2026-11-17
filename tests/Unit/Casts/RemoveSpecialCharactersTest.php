@@ -8,6 +8,7 @@ use DevToolbelt\LaravelEloquentPlus\Casts\RemoveSpecialCharacters;
 use DevToolbelt\LaravelEloquentPlus\Tests\TestCase;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class RemoveSpecialCharactersTest extends TestCase
 {
@@ -21,9 +22,7 @@ final class RemoveSpecialCharactersTest extends TestCase
         $this->model = Mockery::mock(Model::class);
     }
 
-    /**
-     * @dataProvider setValueProvider
-     */
+    #[DataProvider('setValueProvider')]
     public function testSetRemovesSpecialCharacters(mixed $input, ?string $expected): void
     {
         $result = $this->cast->set($this->model, 'username', $input, []);

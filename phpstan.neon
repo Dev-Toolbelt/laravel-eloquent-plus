@@ -9,3 +9,7 @@ parameters:
     - identifier: missingType.generics
     # Auth facade magic method - auth() returns Factory but proxies to Guard via __call
     - '#Call to an undefined method Illuminate\\Contracts\\Auth\\Factory::user\(\)#'
+    # Runtime trait detection: the Concerns are reusable on models without SoftDeletes
+    -
+      identifier: function.alreadyNarrowedType
+      path: src/Concerns/HasBlamable.php

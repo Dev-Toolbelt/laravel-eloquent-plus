@@ -6,6 +6,7 @@ namespace DevToolbelt\LaravelEloquentPlus\Tests\Unit\Validators;
 
 use DevToolbelt\LaravelEloquentPlus\Tests\TestCase;
 use DevToolbelt\LaravelEloquentPlus\Validators\CpfCnpjValidator;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class CpfCnpjValidatorTest extends TestCase
 {
@@ -17,9 +18,7 @@ final class CpfCnpjValidatorTest extends TestCase
         $this->validator = new CpfCnpjValidator();
     }
 
-    /**
-     * @dataProvider validCpfProvider
-     */
+    #[DataProvider('validCpfProvider')]
     public function testValidCpf(string $cpf): void
     {
         $failed = false;
@@ -41,9 +40,7 @@ final class CpfCnpjValidatorTest extends TestCase
         $this->assertFalse($failed, "CPF '{$cpf}' should be valid but got: {$failMessage}");
     }
 
-    /**
-     * @dataProvider invalidCpfProvider
-     */
+    #[DataProvider('invalidCpfProvider')]
     public function testInvalidCpf(string $cpf): void
     {
         $failed = false;
@@ -63,9 +60,7 @@ final class CpfCnpjValidatorTest extends TestCase
         $this->assertTrue($failed, "CPF '{$cpf}' should be invalid");
     }
 
-    /**
-     * @dataProvider validCnpjProvider
-     */
+    #[DataProvider('validCnpjProvider')]
     public function testValidCnpj(string $cnpj): void
     {
         $failed = false;
@@ -87,9 +82,7 @@ final class CpfCnpjValidatorTest extends TestCase
         $this->assertFalse($failed, "CNPJ '{$cnpj}' should be valid but got: {$failMessage}");
     }
 
-    /**
-     * @dataProvider invalidCnpjProvider
-     */
+    #[DataProvider('invalidCnpjProvider')]
     public function testInvalidCnpj(string $cnpj): void
     {
         $failed = false;

@@ -31,7 +31,7 @@
 ## Requirements
 
 - PHP ^8.3
-- Laravel ^11.0
+- Laravel 11, 12 or 13 (`^11.0|^12.0|^13.0`)
 
 ---
 
